@@ -18,28 +18,36 @@ end
 
 
 function rx.Observable:get(key, ...)
-  if not key then return self end
+  if not key then return self:distinctUntilChanged(tEqual) end
   local args = {...}
   local innerSubscription
-  if type(key) ~= 'string' and type(key) ~= 'number' then
-    return rx.Observable.throw('get key must be a string')
+  if type(key) ~= 'string' and type(key) ~= 'number' and not isState(key) then
+    return rx.Observable.throw('get key must be  string number state')
   end
-
-  return self:flatMapLatest(function (t)
-	local newOb
-
-	if type(t) == "table" then
-		local v = t[key]
-		if isState(v) then
-			newOb = v
+  if not isState(key) then
+	  return self:flatMapLatest(function (t)
+		local newOb
+		if type(t) == "table" then
+			local v = t[key]
+			if isState(v) then
+				newOb = v
+			else
+		      	newOb = rx.Observable.of(v)
+		  	end
 		else
-	      	newOb = rx.Observable.of(v)
-	  	end
-	else
-	   newOb = rx.Observable.of(nil)
-	end
-	return newOb
-  end):get(rx.util.unpack(args)):distinctUntilChanged()
+		   newOb = rx.Observable.of(nil)
+		end
+		return newOb
+	  end):get(rx.util.unpack(args))
+  else
+  	return key:flatMapLatest(function (arr)
+		if type(arr) ~= "table" then 
+			return self:get(arr)
+		else
+			return self:get(rx.util.unpack(arr))
+		end
+	end)
+  end
 end
 
 

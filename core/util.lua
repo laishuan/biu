@@ -19,6 +19,26 @@ tostr = function (v, deep)
     end
 end-- util.lua
 
+tEqual = function (v1, v2)
+    if type(v1) ~= "table" or type(v2) ~= "table" then
+        return v1 == v2
+    else
+        for k,v in pairs(v1) do
+            if not tEqual(v2[k], v) then
+                return false
+            end
+        end
+
+        for k,v in pairs(v2) do
+            if not tEqual(v1[k], v) then
+                return false
+            end
+        end
+
+        return true
+    end
+end
+
 string.split = function (inputstr, sep)
     if sep == nil then
             sep = "%s"
