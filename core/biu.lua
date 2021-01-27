@@ -1,57 +1,142 @@
 -- render.lua
 local rx = require "lib.rx"
 
+local StateSubject = setmetatable({}, rx.Subject)
+StateSubject.__index = StateSubject
+StateSubject.__tostring = rx.util.constant('StateSubject')
+
+local isState = function(object)
+	if not type(object) == 'table' then
+		return false
+	end
+	local mt = getmetatable(object)
+	if not mt then
+		return
+	end
+  	return mt.__index == StateSubject or mt.__index == rx.Observable
+end
+
+
+function rx.Observable:get(key, ...)
+  if not key then return self end
+  local args = {...}
+  local innerSubscription
+  if type(key) ~= 'string' and type(key) ~= 'number' then
+    return rx.Observable.throw('get key must be a string')
+  end
+
+  return self:flatMapLatest(function (t)
+	local newOb
+
+	if type(t) == "table" then
+		local v = t[key]
+		if isState(v) then
+			newOb = v
+		else
+	      	newOb = rx.Observable.of(v)
+	  	end
+	else
+	   newOb = rx.Observable.of(nil)
+	end
+	return newOb
+  end):get(rx.util.unpack(args)):distinctUntilChanged()
+end
+
+
+function StateSubject.create(data)
+  assert(type(data) == "table", "StateSubject must create with table data.")
+  local self = {
+    observers = {},
+    stopped = false
+  }
+  self.value = data
+
+  return setmetatable(self, StateSubject)
+end
+
+function StateSubject:subscribe(onNext, onError, onCompleted)
+  local observer
+
+  if rx.util.isa(onNext, Observer) then
+    observer = onNext
+  else
+    observer = rx.Observer.create(onNext, onError, onCompleted)
+  end
+
+  local subscription = rx.Subject.subscribe(self, observer)
+
+  if self.value then
+    observer:onNext(self.value)
+  end
+
+  return subscription
+end
+
+local updateData
+updateData = function (from, to)
+	if not type(from) ~= "table" or not type(to) ~= "table" then
+		return
+	end
+	for k,v in pairs(from) do
+		if type(v) ~= "table" or isState(v) then
+			to[k] = v
+		else
+			if type(to[k]) ~= "table" then
+				to[k] = v
+			else
+				updateData(v, to[k])
+			end
+		end
+	end
+end
+function StateSubject:onNext(data)
+	updateData(data, self.value)
+	return rx.Subject.onNext(self, data)
+end
+
+
+function StateSubject:value(key, ...)
+	local ret
+	local data = self:get(key, ...):subscribe(function (v)
+		ret = v
+	end)
+	return ret
+end
+
+StateSubject.__call = StateSubject.onNext
+
+
 local biu = {}
 biu.net = rx.Subject.create()
 biu.click = rx.Subject.create()
 biu.touch = rx.Subject.create()
 
-biu.init = function (evts)
-	evts:filter(function (tp, ...)
+biu.init = function (bus)
+	bus:filter(function (tp, ...)
 		return biu[tp]
 	end):distinctUntilChanged():subscribe(function (tp, ...)
 		print(...)
-		biu[tp]:onNext(...)
+		biu[tp](...)
 	end)
 end
 
-local curEnter, curExit
+local effectStart, effectFinish
 biu.useState = function (data)
-	local state = rx.Subject.create()
-	return {state:startWith(data), function (v)
-		state:onNext(v)
-	end}
+	local state = StateSubject.create(data)
+	return state, function (v)
+		state(v)
+	end
 end
 
 biu.useEffect = function (f)
-	if curEnter and curExit then
-		curEnter:subscribe(function ( ... )
-			curExit:subscribe(f())
+	if effectStart and effectFinish then
+		effectStart:subscribe(function ( ... )
+			effectFinish:subscribe(f())
 		end)
 	end
 end
 
 biu.render = function (uiData)
-	local tostr, rptChar
-	rptChar = function (char, times)
-		if times <= 0 then
-			return ""
-		end
-		return char .. rptChar(char, times - 1)
-	end
-	tostr = function (v, deep)
-		deep = deep or 0
-		if type(v) ~= "table" then
-			return tostring(v)
-		else
-			local str = "{\n"
-			for k,v in pairs(v) do
-				str = str .. rptChar('\t', deep+1) .. k .. ":" .. tostr(v, deep+1) .. "\n"
-			end
-			str = str .. rptChar('\t', deep) .. "}\n"
-			return str
-		end
-	end
 	rx.Observable.of(uiData):dump("render: ", tostr)
 end
 

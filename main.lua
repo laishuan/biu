@@ -8,6 +8,7 @@ local evts = rx.Subject.create()
 biu.init(evts)
 biu.render(game)
 
+
 local timmer = rx.Subject.create()
 local file = rx.Observable.fromFileByLine("evt.txt")
 timmer:subscribe(function (time)

@@ -1,4 +1,23 @@
--- util.lua
+local rptChar
+rptChar = function (char, times)
+    if times <= 0 then
+        return ""
+    end
+    return char .. rptChar(char, times - 1)
+end
+tostr = function (v, deep)
+    deep = deep or 0
+    if type(v) ~= "table" then
+        return tostring(v)
+    else
+        local str = "{\n"
+        for k,v in pairs(v) do
+            str = str .. rptChar('\t', deep+1) .. k .. ":" .. tostr(v, deep+1) .. "\n"
+        end
+        str = str .. rptChar('\t', deep) .. "}\n"
+        return str
+    end
+end-- util.lua
 
 string.split = function (inputstr, sep)
     if sep == nil then
