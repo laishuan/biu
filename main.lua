@@ -1,11 +1,9 @@
-require 'core.util'
 local biu = require 'core.biu'
 local game = require 'game'
 local rx = require "lib.rx"
-
 local evts = rx.Subject.create()
 
-biu.init(evts)
+biu.setBus(evts)
 biu.render(game)
 
 

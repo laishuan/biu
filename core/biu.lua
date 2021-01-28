@@ -1,6 +1,7 @@
 -- render.lua
 local rx = require "lib.rx"
-
+local util = require 'util'
+local tostr, tEqual = util.tostr, util.tEqual
 local StateSubject = setmetatable({}, rx.Subject)
 StateSubject.__index = StateSubject
 StateSubject.__tostring = rx.util.constant('StateSubject')
@@ -16,6 +17,24 @@ local isState = function(object)
   	return mt.__index == StateSubject or mt.__index == rx.Observable
 end
 
+
+local combinData
+combinData = function (from, to)
+	if type(from) ~= "table" or type(to) ~= "table" then
+		return
+	end
+	for k,v in pairs(from) do
+		if type(v) ~= "table" or isState(v) then
+			to[k] = v
+		else
+			if type(to[k]) ~= "table" then
+				to[k] = v
+			else
+				combinData(v, to[k])
+			end
+		end
+	end
+end
 
 function rx.Observable:get(key, ...)
   if not key then return self:distinctUntilChanged(tEqual) end
@@ -80,25 +99,9 @@ function StateSubject:subscribe(onNext, onError, onCompleted)
   return subscription
 end
 
-local updateData
-updateData = function (from, to)
-	if not type(from) ~= "table" or not type(to) ~= "table" then
-		return
-	end
-	for k,v in pairs(from) do
-		if type(v) ~= "table" or isState(v) then
-			to[k] = v
-		else
-			if type(to[k]) ~= "table" then
-				to[k] = v
-			else
-				updateData(v, to[k])
-			end
-		end
-	end
-end
 function StateSubject:onNext(data)
-	updateData(data, self.value)
+	combinData(data, self.value)
+	-- print("after dispatch", tostr(self.value))
 	return rx.Subject.onNext(self, data)
 end
 
@@ -119,9 +122,9 @@ biu.net = rx.Subject.create()
 biu.click = rx.Subject.create()
 biu.touch = rx.Subject.create()
 
-biu.init = function (bus)
+biu.setBus = function (bus)
 	bus:filter(function (tp, ...)
-		return biu[tp]
+		return biu[tp] ~= nil
 	end):distinctUntilChanged():subscribe(function (tp, ...)
 		print(...)
 		biu[tp](...)
@@ -136,6 +139,10 @@ biu.useState = function (data)
 	end
 end
 
+biu.useReducer = function (reducer, data)
+	-- body
+end
+
 biu.useEffect = function (f)
 	if effectStart and effectFinish then
 		effectStart:subscribe(function ( ... )
@@ -145,6 +152,7 @@ biu.useEffect = function (f)
 end
 
 biu.render = function (uiData)
+
 	rx.Observable.of(uiData):dump("render: ", tostr)
 end
 

@@ -1,7 +1,8 @@
 local biu = require 'core.biu'
-local game = require 'game'
 local rx = require "lib.rx"
-require "core.util"
+local util = require 'util'
+local tostr, tEqual = util.tostr, util.tEqual
+
 
 local evts = rx.Subject.create()
 
@@ -60,31 +61,32 @@ local evts = rx.Subject.create()
 -- setState2({c1=1})
 
 
--- local keys, setKeys = biu.useState({"c", "d"})
--- local datac = {
--- 	d=3,
--- 	e={
--- 		f=1
--- 	}
--- }
--- local state3, setState3 = biu.useState(
--- 	{
--- 		a = "1",
--- 		b = "2",
--- 		c = datac
--- 	}
--- )
--- state3:get(keys):subscribe(function (v)
--- 	print("state3 keys =============== ", tostr(v))
--- end)
+local keys, setKeys = biu.useState({"c", "d"})
+local datac = {
+	d=3,
+	e={
+		f=1
+	}
+}
+local state3, setState3 = biu.useState(
+	{
+		a = "1",
+		b = "2",
+		c = datac
+	}
+)
+state3:get(keys):subscribe(function (v)
+	print("state3 keys =============== ", tostr(v))
+end)
 
--- datac.d=4
--- setKeys({"c"})
--- setState3({c=datac})
--- local datad = {
--- 	d=4,
--- 	e={
--- 		f=2
--- 	}
--- }
--- setState3({c=datad})
+datac.d=4
+setKeys({"c"})
+setState3({c=datac})
+local datad = {
+	d=5,
+	e={
+		f=2
+	}
+}
+setState3({c=datad})
+setKeys({"a"})

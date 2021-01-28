@@ -1,5 +1,3 @@
--- game.lua
-
 return {
     type = "HFLNode",
     name = "node_root",
@@ -7,6 +5,9 @@ return {
         x = 640,
         y = 360
     },
+    controller = function ()
+    	
+    end,
     {
         name = "ctrAward",
         type = "HFLUITree",
