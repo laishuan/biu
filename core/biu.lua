@@ -1,6 +1,7 @@
 -- render.lua
 local rx = require "lib.rx"
 
+local nerver = rx.Observable.never():startWith()
 string.split = function (inputstr, sep)
     if sep == nil then
             sep = "%s"
@@ -51,7 +52,9 @@ util.tostr = function (v, deep)
 end-- util.lua
 
 util.tEqual = function (v1, v2)
-    if type(v1) ~= "table" or type(v2) ~= "table" then
+	if v1 == v2 then
+		return true
+    elseif type(v1) ~= "table" or type(v2) ~= "table" then
         return v1 == v2
     else
     	local empty1 = true
@@ -81,7 +84,7 @@ local StateSubject = setmetatable({}, rx.Subject)
 StateSubject.__index = StateSubject
 StateSubject.__tostring = rx.util.constant('StateSubject')
 
-local isState = function(object)
+local isObservable = function(object)
 	if not type(object) == 'table' then
 		return false
 	end
@@ -92,63 +95,73 @@ local isState = function(object)
   	return mt.__index == StateSubject or mt.__index == rx.Observable
 end
 
-util.isState = isState
-
-
-local combinData, copyto
-copyto = function (from, to)
-	if type(from) ~= "table" or type(to) ~= "table" then
+util.isState = function(object)
+	if not type(object) == 'table' then
+		return false
+	end
+	local mt = getmetatable(object)
+	if not mt then
 		return
 	end
-	for k,v in pairs(from) do
-		local vTo = to[k]
-		if not vTo then
-			to[k] = v
-		elseif (type(vTo) == "table" and not isState(vTo)) then
-			copyto(v, vTo)
-		end
-	end	
+  	return mt.__index == StateSubject
 end
-combinData = function (from, to)
-	if type(from) ~= "table" or type(to) ~= "table" then
-		return
-	end
-	for k,v in pairs(from) do
-		if type(v) ~= "table" or isState(v) then
-			to[k] = v
-		else
-			if type(to[k]) == "table"
-			and (not isState(to[k])) then
-				copyto(to[k], v)
-			end
-			to[k] = v
 
-		end
-	end
+util.isObservable = isObservable
+
+rx.Observable.change = rx.Observable.distinctUntilChanged
+
+function rx.Observable:changeTo(v)
+	return self:change():filter(function (vv)
+		return vv == v
+	end)
+end
+
+function rx.Observable:tp(tp)
+  return rx.Observable.create(function(observer)
+
+    local function onNext(...)
+      return rx.util.tryWithObserver(observer, function(...)
+      	local args = {...}
+      	if args[1] == tp then
+      		table.remove(args,1)
+	        return observer:onNext(unpack(args))
+	    end
+      end, ...)
+    end
+
+    local function onError(e)
+      return observer:onError(e)
+    end
+
+    local function onCompleted()
+      return observer:onCompleted()
+    end
+
+    return self:subscribe(onNext, onError, onCompleted)
+  end)
 end
 
 function rx.Observable:get(key, ...)
-  if not key then return self:distinctUntilChanged(tEqual) end
+  if not key then return self end--self:distinctUntilChanged(tEqual) end
   local args = {...}
   local innerSubscription
-  if type(key) ~= 'string' and type(key) ~= 'number' and not isState(key) then
+  if type(key) ~= 'string' and type(key) ~= 'number' and not isObservable(key) then
     return rx.Observable.throw('get key must be  string number state')
   end
-  if not isState(key) then
+  if not isObservable(key) then
 	  return self:flatMapLatest(function (t)
-		local newOb
 		if type(t) == "table" then
 			local v = t[key]
-			if isState(v) then
-				newOb = v
-			else
-		      	newOb = rx.Observable.of(v)
+			if isObservable(v) then
+				return v
+			elseif v ~= nil then
+		      	return rx.Observable.of(v)
 		  	end
-		else
-		   newOb = rx.Observable.of(nil)
 		end
-		return newOb
-	  end):get(rx.util.unpack(args))
+		return nerver
+	  end)--[[:tap(function (v)
+	  	print("key:", key, tostr(v))
+	  end)]]:get(rx.util.unpack(args))
   else
   	return key:flatMapLatest(function (arr)
 		if type(arr) ~= "table" then 
@@ -162,20 +175,51 @@ end
 
 
 function StateSubject.create(data)
-  assert(type(data) == "table", "StateSubject must create with table data.")
+  -- assert(type(data) == "table", "StateSubject must create with table data.")
   local self = {
     observers = {},
     stopped = false
   }
-  self.value = data
-
-  return setmetatable(self, StateSubject)
+  setmetatable(self, StateSubject)
+  if isObservable(data) then
+  	data:subscribe(self)
+  else
+	  self.value = data
+  end
+  local catch = {}
+  self.get = function (self, ...)
+  	local key = ""
+  	local args = {...}
+  	if #args <= 0 then
+  		return self
+  	end
+  	for i,v in ipairs(args) do
+  		if isObservable(v) then
+  			key = nil
+  			break
+  		else
+  			key = key .. "_" .. v
+  		end
+  	end
+  	local ret
+  	if type(key) == "string" then
+	  	ret = catch[key]
+	  	if not ret then
+	  		ret = rx.Observable.get(self, ...)
+	  		catch[key] = ret
+	  	end 
+  	else
+	  	ret = rx.Observable.get(self, ...)
+  	end
+  	return ret
+  end
+  return self
 end
 
 function StateSubject:subscribe(onNext, onError, onCompleted)
   local observer
 
-  if rx.util.isa(onNext, Observer) then
+  if rx.util.isa(onNext, rx.Observer) then
     observer = onNext
   else
     observer = rx.Observer.create(onNext, onError, onCompleted)
@@ -183,32 +227,67 @@ function StateSubject:subscribe(onNext, onError, onCompleted)
 
   local subscription = rx.Subject.subscribe(self, observer)
 
-  if self.value then
+  -- if self.value then
     observer:onNext(self.value)
-  end
+  -- end
 
   return subscription
+end
+
+local combinData
+
+combinData = function (from, to)
+	if type(from) ~= "table" or type(to) ~= "table" then
+		return from
+	end
+	if isObservable(from) or isObservable(to) then
+		return from
+	end
+	for k,v in pairs(from) do
+		to[k] = combinData(v, to[k])
+	end
+	return to
 end
 
 function StateSubject:onNext(data, ...)
 	local reducer = self.reducer or rx.util.identity
 	local combinFrom = reducer(data,...)
-	combinData(combinFrom, self.value)
-	return rx.Subject.onNext(self, self.value)
+	self.value = combinData(combinFrom, self.value)
+	return rx.Subject.onNext(self, combinFrom)
 end
 
 
-function StateSubject:value(key, ...)
-	local ret
-	local data = self:get(key, ...):subscribe(function (v)
-		ret = v
-	end)
-	return ret
+local vofk
+vofk = function (keyArr, v, index)
+	index = index or 1
+	if #keyArr >= index then
+		local k = keyArr[index]
+		local nextV
+		if type(v) ~= "table" then
+			return nil
+		elseif isObservable(v) then
+			local args = {}
+			for i=index+1, #keyArr do
+				args[#args+1] = keyArr[i]
+			end
+			return v:get(rx.util.unpack(args))
+		else
+			nextV = v[k]
+			return vofk(keyArr,nextV, index+1)
+		end
+	else
+		return v
+	end
+end
+function StateSubject:v(...)
+	local keyArr = {...}
+	return vofk(keyArr, self.value)
 end
 
 StateSubject.__call = StateSubject.onNext
 
 
+local Biu = {}
 
 local Binder = {}
 Binder.__index = Binder
@@ -216,128 +295,243 @@ Binder.__tostring = rx.util.constant('Binder')
 function Binder.create()
   local self = {
   	items = {},
-  	props = {}
+  	props = {},
+  	states = {},
+  	effects = {}
   }
   return setmetatable(self, Binder)
 end
 Binder.__call = Binder.create
 
+function Binder:setRefs(refs)
+	self.refs = refs
+	return self
+end
+
 function Binder:item(insName)
-	local data = {
-		name = insName,
-		attrs = {}
-	}
-	self.items[#self.items] = data
-	self.curContainer = data
+	local itemData = self.items[insName]
+	if not itemData then
+		itemData = {
+			name = insName,
+			attrs = {}
+		}
+		self.items[insName] = itemData
+	end
+	self.curContainer = itemData
 	self.curInsName = insName
 	return self
 end
 
-function Binder:state(state, cloneFrom)
-	self.items[#items+1] = state
+function Binder:setState(state)
+	self.states[#self.states+1] = state
+	return self
+end
+
+function Binder:setProps(name, propData)
+	self.props[name] = propData
+	return self
+end
+
+function Binder:setEffect(name, f)
+	self.effects[name] = f
+	return self
+end
+
+function Binder:loop(from,to, f)
+	for i=from,to do
+		f(i, self)
+	end
+	return self
 end
 
 function Binder:add(data)
-	local container = self.curContainer.attr
+	local container = self.curContainer.attrs
 	container[#container+1] = data
 end
 
-function Binder:position(pos)
-	self:add({"position",pos})	
+function Binder:setPosition(pos)
+	self:add({"setPosition",pos})	
 	return self
 end
 
-function Binder:positionBy(pos)
-	self:add({"positionBy",pos})	
+function Binder:setPositionBy(pos)
+	self:add({"setPositionBy",pos})	
 	return self
 end
 
-function Binder:scale(scale)
-	self:add({"scale",scale})	
+function Binder:setScale(scale)
+	self:add({"setScale",scale})	
 	return self
 end
 
-function Binder:rotation(rotation)
-	self:add({"rotation",rotation})	
+function Binder:setScaleX(scale)
+	self:add({"setScaleX",scale})	
 	return self
 end
 
-function Binder:alpha(alpha)
-	self:add({"alpha",alpha})	
+function Binder:setScaleY(scale)
+	self:add({"setScaleY",scale})	
 	return self
 end
 
-function Binder:color(r,g,b)
-	self:add({"color",r,g,b})	
+function Binder:setRotation(rotation)
+	self:add({"setRotation",rotation})	
 	return self
 end
 
-function Binder:visible(isVisible)
-	self:add({"visible",isVisible})	
+function Binder:setOpacity(opacity)
+	self:add({"setOpacity",alpha})	
 	return self
 end
 
-function Binder:enabled(isEnabled)
-	self:add({"enabled",isEnabled})	
+function Binder:setColor(colorData)
+	self:add({"setColor",colorData})	
 	return self
 end
 
-function Binder:text(str)
-	self:add({"text",str})	
+function Binder:setVisible(isVisible)
+	self:add({"setVisible",isVisible})	
 	return self
 end
 
-function Binder:frame(frameName)
-	self:add({"frame",frameName})	
+function Binder:setEnabled(isEnabled)
+	self:add({"setEnabled",isEnabled})	
 	return self
 end
 
-function Binder:wrapper(name, insName, isPlay, curFrame, cbs)
-	self:add({"wrapper",name, insName})	
-	return self:anim(isPlay, curFrame, cbs)
-end
-
-function Binder:anim(isPlay, curFrame, cbs)
-	self:add({"anim",isPlay, curFrame, cbs})	
+function Binder:onClick(f)
+	self:add({"onClick",f})	
 	return self
 end
 
-function Binder:props(propData)
-	self.props[self.curInsName] = propData
+function Binder:setString(str)
+	self:add({"setString",str})	
+	return self
+end
+
+function Binder:fillString(arr)
+	self:add({"fillString",arr})	
+	return self
+end
+
+function Binder:setFrame(frameName)
+	self:add({"setFrame",frameName})	
+	return self
+end
+
+function Binder:autoTip(meta, scale)
+	self:add({"autoTip", meta, scale})	
+	return self
+end
+
+function Binder:autoProgress(insName, isVertical)
+	self:add({"autoProgress", insName, isVertical})
+	return self
+end
+
+function Binder:wrapper(data)
+	self:add({"wrapper",data})	
+	return self
+end
+
+function Binder:playStop(data)
+	self:add({"playStop",data})	
+	return self
+end
+
+function Binder:play(isPlay)
+	self:add({"play",isPlay})	
+	return self
+end
+
+function Binder:stop(isStop)
+	self:add({"stop",isStop})	
 	return self
 end
 
 
-local biu = {}
-biu.net = rx.Subject.create()
-biu.binder = Binder
-biu.util = util
+function Binder:gotoAndPlay(frame)
+	self:add({"gotoAndPlay",frame})	
+	return self
+end
 
-biu.init = function (data,reqFun)
-	biu.userData = biu.createState(data)
-	biu.net:subscribe(function ( ... )
-		reqFun(function (data)
-			return biu.userData:onNext(data) 
-		end, ...)
+function Binder:gotoAndStop(frame)
+	self:add({"gotoAndStop",frame})	
+	return self
+end
+
+function Binder:setFrameCallBack(frameData)
+	-- frameData.frame  frameData.callBack
+	self:add({"setFrameCallBack",frameData})	
+	return self
+end
+
+function Binder:setEndCallBack(callBack)
+	self:add({"setEndCallBack",callBack})
+	return self
+end
+
+function Binder:setEachFrameCallBack(callBack)
+	self:add({"setEachFrameCallBack",callBack})	
+	return self
+end
+
+
+
+local Net = rx.Subject.create()
+Biu.Binder = Binder
+Biu.Util = util
+Biu.Rx = rx
+
+Biu.init = function (data,reqFun)
+	data = table.deepcopy(data)
+	data.config = nil
+	Biu.GameData = Biu.createState(data)
+	Net:subscribe(function ( ... )
+		local args = {...}
+		local cbIndex,cb
+		for i,v in ipairs(args) do
+			print("v:", v)
+	      if type(v) == "function" then
+	          cb = v
+	          cbIndex = i
+	      end
+		end
+		if not cb then
+			cb = function (data)
+				return Biu.GameData:onNext(data) 
+			end
+			cbIndex = #args+1
+		else
+			local oldCB = cb
+			cb = function (resp)
+				oldCB(resp)
+				Biu.GameData:onNext(resp) 
+			end
+		end
+
+		args[cbIndex] = cb
+		-- dump(args)
+
+		reqFun(rx.util.unpack(args))
 	end)
 end
 
-biu.createBus = function (bindFromPanel)
+Biu.createBus = function ()
 	local bus = rx.Subject.create()
 	bus:subscribe(function (tp, ...)
 		if tp == "req" then
-			biu.net:onNext(...)
+			Net:onNext(...)
 		end
 	end)
-	bindTouchClickFunc(bus)
 	return bus
 end
 
-biu.createState = function (data, reducer)
+Biu.createState = function (data, reducer)
 	local state = StateSubject.create(data)
 	state.reducer = reducer
 	return state
 end
 
 
-return biu
+return Biu
