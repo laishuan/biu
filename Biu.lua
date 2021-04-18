@@ -1,311 +1,433 @@
-local util = {}
-local unpack = table.unpack or unpack
-local pack = table.pack or function(...) return { n = select('#', ...), ... } end
-
-local curry = function (f)
-	return function (...)
-		local args = {...}
-		return function (observerable)
-			return f(observerable, unpack(args))
-		end
-	end
-end
-
-local compose = function (f1, f2)
-	return function (observerable)
-		f2(f1(observerable))
-	end
-end
-
-local joinNextFinish = function (onNext, onFinish)
-	local isFinsh = false
-	return {function ( ... )
-		if not isFinsh then onNext(...) end
-	end, function ( ... )
-		isFinsh = true
-		finish()
-	end}
-end
-
-util.unpack = unpack
-util.pack = pack
-
-util.eq = function(x, y) return x == y end
-util.noop = function() end
-util.identity = function(x) return x end
-util.constant = function(x) return function() return x end end
-
-local op = {}
-
-op.map = curry(function (observerable, f)
-	return function (onNext, finish)
-		return observerable(function (...)
-			onNext(f(...))
-		end, finish)
-	end
-end)
-
-op.select = curry(function (observerable, f)
-	return function (onNext, finish)
-		return observerable(function (...)
-			if f(...) then
-				onNext(...)
-			end
-		end, finish)
-	end
-end)
-
-op.reject = curry(function (observerable, f)
-	return function (onNext, finish)
-		onNext, finish = 
-		return observerable(function (...)
-			if not f(...) then
-				onNext(...)
-			end
-		end, finish)
-	end
-end)
-
-op.reduce = curry(function (observerable, f, state)
-	return function (onNext, finish)
-		local first = true
-		return observerable(function (...)
-			local args = {...}
-			if first then
-				state = state or args[1]
-				first = false
-			else
-				state = f(state, ...)
-			end
-		end, function ( ... )
-			onNext(state)
-			finish()
-		end)
-	end
-end)
-
-op.scan = curry(function (observerable, f, state)
-	return function (onNext, finish)
-		local first = true
-		return observerable(function (...)
-			local args = {...}
-			if first then
-				state = state or args[1]
-				first = false
-			else
-				state = f(state, ...)
-			end
-			onNext(state)
-		end, finish)
-	end
-end)
-
-op.reverse = curry(function (observerable)
-	return function (onNext, finish)
-		local arr = {}
-		return observerable(function (...)
-			table.insert(arr, 1, {...})
-		end, function ( ... )
-			for i=#arr,1 do
-				onNext(unpack(arr[i]))
-			end
-			finish()
-		end)
-	end
-end)
-
-op.findIndex = curry(function (observerable, f)
-	return function (onNext, finish)
-		local index
-		local newFinish = function ( ... )
-			onNext(index)
-			finish()
-		end
-
-		return observerable(function ( ... )
-			if not index and f(...) then
-				local args = {...}
-				index = args[2]
-			end
-		end, newFinish)
-	end
-end)
-
-op.findValue = curry(function (observerable, f)
-	return function (onNext, finish)
-		local value
-		local newFinish = function ( ... )
-			onNext(value)
-			finish()
-		end
-
-		return observerable(function ( ... )
-			if not value and f(...) then
-				local args = {...}
-				value = args[1]
-			end
-		end, newFinish)
-	end
-end)
-
-op.all = curry(function (observerable, f)
-	return function (onNext, finish)
-		local value = true
-		local newFinish = function ( ... )
-			onNext(value)
-			finish()
-		end
-
-		return observerable(function ( ... )
-			if value and not f(...) then
-				value = false
-			end
-		end, newFinish)
-	end
-end)
-
-op.groupBy = curry(function (observerable, f)
-	return function (onNext, finish)
-		local _t = {}
-		local newFinish = function ( ... )
-			onNext(_t)
-			finish()
-		end
-
-		return observerable(function ( ... )
-			local args = {...}
-			local v, k = args[1], args[2]
-		    local _key = f(v,k)
-		    if _t[_key] then _t[_key][#_t[_key]+1] = v
-		    else _t[_key] = {v}
-		    end
-		end, newFinish)
-	end
-end)
-
-op.countBy = curry(function (observerable, f)
-	return function (onNext, finish)
-		local _t = {}
-		local newFinish = function ( ... )
-			onNext(_t)
-			finish()
-		end
-
-		return observerable(function ( ... )
-			local args = {...}
-			local v, i = args[1], args[2]
-		    local key = f(v,i)
-		    _t[key] = (_t[key] or 0)+1
-		end, newFinish)
-	end
-end)
-
-op.max = function ()
-	return op.reduce(math.max)
-end
-
-op.min = function ()
-	return op.reduce(math.min)
-end
-
-op.sample = curry(function (observerable, sampler)
-	return function (onNext, finish)
-		local values
-
-		local stop1 = observerable(function ( ... )
-			values = {...}
-		end, util.noop)
-
-		local stop2 = sampler(function ( ... )
-			if values ~= nil then
-				onNext(unpack(values))
-			end
-		end, finish)
-
-		return function ( ... )
-			if stop1 then stop1() end
-			if stop2 then stop1() end
-		end
-	end
-end)
-
-op.flatten = curry(function (observerable)
-	return function (onNext, finish)
-	    local subscriptions = {}
-	    local remaining = 1
-
-	    local function newFinish()
-	      remaining = remaining - 1
-	      if remaining == 0 then
-	        finish()
-	      end
-	    end
-		observerable(function (v)
-			subscriptions[#subscriptions+1] = v(function ( ... )
-				remaining = remaining
-				onNext(...)
-			end, util.noop)
-		end, newFinish)
-
-		return function ( ... )
-	      for i = 1, #subscriptions do
-	        subscriptions[i]()
-	      end
-		end
-	end
-end)
-
-op.flatMap = curry(function (observerable, f)
-	return compose(op.map(f), op.flatten())(observerable)
-end)
-
-op.startWith = function (observerable, v)
-	return function (onNext, finish)
-		onNext(v)
-		return observerable(onNext, finish)
-	end
-end
-
 local Biu = {}
 
-Biu.util = util
-Biu.op = op
+local OpData = require "Op"
+local util = require "Util"
+local op = OpData.op
+local createOBf = OpData.createOBf
+
+local tostr, tEqual, split = util.tostr, util.tEqual, util.split
+
+local Observable = {}
+Observable.__index = Observable
+Observable.__tostring = util.constant('Observable')
+
+local State = {}
+State.__index = State
+State.__tostring = util.constant('State')
+
+for k,v in pairs(op) do
+	Observable[k] = function (self, ... )
+		local f = v(...)
+		if k == "value" then
+			local ret
+			f(self._subscribe)(function (v)
+				ret = v
+			end)
+			return ret
+		else
+			return Biu:createOB(f(self._subscribe))
+		end
+	end
+	State[k] = function (self, ... )
+		local f = v(...)
+		local _subscribe = function (onNext, onFinish)
+			self:subscribe(onNext, onFinish)
+		end
+		if k == "value" then
+			local ret
+			f(_subscribe)(function (v)
+				ret = v
+			end)
+			return ret
+		else
+			return Biu:createOB(f(_subscribe))
+		end
+	end
+end
+
+
+local combinData, vofk, isObservable, isState
+
+isObservable = function(object)
+  if not type(object) == 'table' then
+    return false
+  end
+  local mt = getmetatable(object)
+  if not mt then
+    return
+  end
+    return mt.__index == State or mt.__index == Observable
+end
+
+isState = function(object)
+  if not type(object) == 'table' then
+    return false
+  end
+  local mt = getmetatable(object)
+  if not mt then
+    return
+  end
+    return mt.__index == State
+end
+
+vofk = function (keyArr, v, index)
+  index = index or 1
+  if #keyArr >= index then
+    local k = keyArr[index]
+    local nextV
+    if type(v) ~= "table" then
+      return nil
+    elseif isObservable(v) then
+      local args = {}
+      for i=index, #keyArr do
+        args[#args+1] = keyArr[i]
+      end
+      return v:get(rx.util.unpack(args))
+    else
+      nextV = v[k]
+      return vofk(keyArr,nextV, index+1)
+    end
+  else
+    return v
+  end
+end
+
+local isNode = function (v)
+	return (type(v) == "table" 
+			and type(v.is) == "function" 
+			and v:is(HFLNode))
+end
+
+combinData = function (to, from)
+  if to == nil then
+    return from
+  end
+
+  if type(to) ~= "table" or isObservable(to) or isNode(to) then
+  	if not isObservable(to) then
+    	return to
+    else
+    	return nil
+    end
+  end
+
+  local newTo = {}
+  for k,v in pairs(to) do
+  	if not isObservable(v) then
+    	newTo[k] = v
+    end
+  end
+
+   if type(from) ~= "table" or isObservable(from) or isNode(to) then
+      return newTo
+  end
+
+  local minDeleteNumber
+  for k,v in pairs(from) do
+  	if type(k) == "number" then
+	    if newTo[k] ~= "_delete" then
+	      if minDeleteNumber and k > minDeleteNumber then
+	      	newTo[k] = nil
+	      else
+		      newTo[k] = combinData(newTo[k], v)
+		  end
+	    else
+	      if not minDeleteNumber then
+	      	minDeleteNumber = k
+	      else
+	      	minDeleteNumber = math.min(minDeleteNumber, k)
+	      end
+	      newTo[k] = nil
+	    end
+	else
+	    if newTo[k] ~= "_delete" then
+	      newTo[k] = combinData(newTo[k], v)
+	    else
+	      newTo[k] = nil
+	    end
+	end
+  end
+  return newTo
+end
+
+function Observable:subscribe(onNext, onFinish)
+	assert(isState(onNext) or type(onNext) == "function", "onNext type error")
+	if isState(onNext) then
+		return self._subscribe(function (...)
+			onNext:set(...)
+		end, function ( ... )
+		end)
+	else
+		return self._subscribe(onNext, onFinish)
+	end
+end
+
+function State:v(...)
+  local keyArr = {...}
+  return vofk(keyArr, self.value)
+end
+
+local getAllOB
+getAllOB = function (data, result, key)
+	if type(data) ~= "table" then
+		return
+	end
+	for k,v in pairs(data) do
+		local newK = key and key .. "," .. k or k
+		if isObservable(v) then
+			result[newK] = v
+		elseif type(v) == "table" and not (isNode(v)) then
+			getAllOB(v, result, newK)
+		end
+	end
+end
+
+function State:get( ... )
+	local keyArr = {...}
+	return self:map(function ( ... )
+		return vofk(keyArr,self.value)
+	end)
+end
+
+function State:any( ... )
+	local keyArr = {...}
+	for i,v in ipairs(keyArr) do
+		if type(v) ~= "table" then
+		  keyArr[i] = {v}
+		end
+	end
+	return self:select(function (v)
+		local hadOne = false
+		for i,keys in ipairs(keyArr) do
+			if vofk(keys, v) ~= nil then
+			  hadOne = true
+			  break
+			end
+		end
+		return hadOne
+	end):map(function (v)
+		local ret = {}
+		for i,keys in ipairs(keyArr) do
+			ret[i] = vofk(keys, self.value)
+		end
+		return unpack(ret)
+	end)
+end
+
+function State:set(data)
+  local nextData = data
+  local all = {}
+  local hash = {}
+  -- util.dump(data, "test in set")
+  getAllOB(data, all)
+  -- util.dump(all, "test result")
+  for k,v in pairs(all) do
+  	-- print(k)
+  	local arr = split(k, ",")
+	-- util.dump(arr, "test arr")
+  	if hash[k] and type(hash[k]) == "function" then hash[k]() end
+  	hash[k] = v:map(function (v)
+  		local ret
+  		for i=#arr,1,-1 do
+  			local key = arr[i]
+  			ret = {}
+  			ret[key] = v
+  			v = ret
+  		end
+  		return ret
+  	end):subscribe(self)
+  end
+
+  -- util.dump(self.value, "befor combin")
+  -- util.dump(data, "befor combin")
+  self.value = combinData(data, self.value)
+  -- util.dump(self.value, "after combin")
+  if nextData ~= nil then
+    if not self.stopped then
+      local allKey = util.keys(self.observers)
+      table.sort( allKey, function (order1, order2)
+        return tonumber(order1) > tonumber(order2)
+      end)
+
+      for i,order in ipairs(allKey) do
+        local orderArr = self.observers[order]
+        for ii = #orderArr, 1, -1 do
+          orderArr[ii][1](nextData)
+        end
+      end
+    end
+  end
+end
+
+function State:finish( ... )
+  if not self.stopped then
+    local allKey = util.keys(self.observers)
+    table.sort( allKey, function (order1, order2)
+      return tonumber(order1) > tonumber(order2)
+    end)
+    for i,order in ipairs(allKey) do
+      local orderArr = self.observers[order]
+      for ii = #orderArr, 1, -1 do
+        orderArr[ii][2]()
+      end
+    end
+    self.stopped = true
+  end
+end
+
+function State:subscribe(onNext, onFinish, order)
+  order = order or 1
+	local orderArr = self.observers[order]
+	if not orderArr then
+	    orderArr = {}
+	    self.observers[order] = orderArr
+	end
+
+	local newNext, newFinish
+
+	if isState(onNext) then
+		newNext = function ( ... )
+	    	onNext:set(...)
+	    end
+	    newFinish = function ( ... )
+	    	
+	    end
+	else
+		newNext, newFinish = onNext, onFinish
+	end
+    table.insert(orderArr, {newNext, newFinish})
+
+    local subscription = function()
+      for i = 1, #orderArr do
+	        if orderArr[i][1] == newNext and orderArr[i][2] == newFinish then
+		        table.remove(orderArr, i)
+		        return
+	        end
+      end
+    end
+    if self.value ~= nil then
+      	newNext(self.value)
+    end
+    return subscription
+end
+
+function Biu:createOB(f)
+  local self = {
+    _subscribe = createOBf(f)
+  }
+  return setmetatable(self, Observable)
+end
+
+function Biu:createState(data)
+  local self
+  self = {
+    observers = {},
+    stopped = false,
+    _subscribe = function (onNext, onFinish)
+		self:subscribe(onNext, onFinish)
+	end
+  }
+  setmetatable(self, State)
+  if isObservable(data) then
+    data:subscribe(self)
+  else
+    self:set(data, true)
+  end
+
+  return self
+end
 
 function Biu:of(v)
-	return function (onNext, finish)
+	return Biu:createOB(function (onNext, onFinish)
 		onNext(v)
-		finish()
-	end
+		onFinish()
+	end)
 end
 
 function Biu:fromArr(v)
-	return function (onNext, finish)
+	return Biu:createOB(function (onNext, onFinish)
 		for i,v in ipairs(v) do
 			onNext(v,i)
 		end
-		finish()
-	end
+		onFinish()
+	end)
 end
 
 function Biu:fromObj(v)
-	return function (onNext, finish)
+	return Biu:createOB(function (onNext, onFinish)
 		for k,v in pairs(v) do
 			onNext(v, k)
 		end
-		finish()
-	end
+		onFinish()
+	end)
 end
 
 function Biu:fromRange(from, to)
-	return function (onNext, finish)
+	return Biu:createOB(function (onNext, onFinish)
 		for i=from,to do
 			onNext(i,i)
 		end
-		finish()
-	end
+		onFinish()
+	end)
 end
 
+function Biu:zip( ... )
+	local sources = util.pack(...)
+	local count = #sources
+	return Biu:createOB(function (onNext, onFinish)
+	    local values = {}
+	    local active = {}
+	    local subscriptions = {}
+	    for i = 1, count do
+	        values[i] = {n = 0}
+	        active[i] = true
+	    end
 
-Biu.op = op
+	    local function newNext(i)
+		    return function(value)
+		        table.insert(values[i], value)
+		        values[i].n = values[i].n + 1
+
+		        local ready = true
+		        for i = 1, count do
+		          if values[i].n == 0 then
+		            ready = false
+		            break
+		          end
+		        end
+
+		        if ready then
+		          local payload = {}
+
+		          for i = 1, count do
+		            payload[i] = table.remove(values[i], 1)
+		            values[i].n = values[i].n - 1
+		          end
+
+		          onNext(util.unpack(payload))
+		        end
+		    end
+	    end
+
+	    local function newFinish(i)
+		    return function()
+		        active[i] = nil
+		        if not next(active) or values[i].n == 0 then
+		          return onFinish()
+		        end
+		    end
+	    end
+
+	    for i = 1, count do
+	        subscriptions[i] = sources[i]:subscribe(newNext(i), newFinish(i))
+	    end
+
+	    return function()
+		    for i = 1, count do
+		        if subscriptions[i] then subscriptions[i]() end
+		    end
+	    end
+	end)
+end
 
 return Biu
