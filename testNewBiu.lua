@@ -107,11 +107,39 @@ local dump = util.dump
 
 --test tp
 
-local state = biu:createState()
+-- local state = biu:createState()
 
-state:tp('aaa'):subscribe(function (v1, v2)
-	dump(v1, "test aaa")
-	dump(v2, "test aaa")
+-- state:tp('aaa'):subscribe(function (v1, v2)
+-- 	dump(v1, "test aaa")
+-- 	dump(v2, "test aaa")
+-- end)
+
+-- state:set("aaa", {3}, {a={b=332}})
+
+
+-- test get 
+
+-- local state = biu:createState({a=1})
+
+-- state:get('aaa'):subscribe(function (v)
+-- 	print("test get", v)
+-- end)
+
+-- state:set({aaa=1})
+
+
+local state = biu:createState({a=1})
+
+state:flatMap(function (v)
+	return biu
+	:promise(function (resolve)
+		anim1
+	end)
+	:concat(biu:promise(function (resolve)
+		anim1
+		-- body
+	end)):concat(biu:of(v))
 end)
-
-state:set("aaa", {3}, {a={b=332}})
+:subscribe(function ( ... )
+	-- body
+end)

@@ -586,7 +586,7 @@ op.flatMapLatest = function (callback)
 			    if innerSubscription then
 			        innerSubscription()
 			    end
-			    innerSubscription = callback(...):subscribe(onNext)
+			    innerSubscription = callback(...)._subscribe(onNext)
 		    end
 
 		    local subscription = observerable(subscribeInner, onFinish)
@@ -690,6 +690,21 @@ op.startWith = function ( ... )
 		return createOBf(function (onNext, onFinish)
 			onNext(util.unpack(args))
 			return observerable(onNext, onFinish)
+		end)
+	end
+end
+
+op.concat = function (other,  ... )
+	local others = {...}
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+  			if not other then return observerable end
+			
+		    local function chain()
+		      return other:concat(util.unpack(others))._subscribe(onNext,  onFinish)
+		    end
+
+		    return observerable(onNext, chain)
 		end)
 	end
 end

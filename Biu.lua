@@ -11,7 +11,7 @@ local Observable = {}
 Observable.__index = Observable
 Observable.__tostring = util.constant('Observable')
 
-local State = {}
+local State = setmetatable({}, Observable)
 State.__index = State
 State.__tostring = util.constant('State')
 
@@ -26,19 +26,6 @@ for k,v in pairs(op) do
 			return ret
 		else
 			return Biu:createOB(f(self._subscribe))
-		end
-	end
-	State[k] = function (self, ... )
-		local f = v(...)
-		local _subscribe = self._subscribe
-		if k == "value" then
-			local ret
-			f(_subscribe)(function (v)
-				ret = v
-			end)
-			return ret
-		else
-			return Biu:createOB(f(_subscribe))
 		end
 	end
 end
@@ -80,7 +67,7 @@ vofk = function (keyArr, v, index)
       for i=index, #keyArr do
         args[#args+1] = keyArr[i]
       end
-      return v:get(rx.util.unpack(args))
+      return v:get(util.unpack(args))
     else
       nextV = v[k]
       return vofk(keyArr,nextV, index+1)
@@ -160,6 +147,10 @@ function Observable:subscribe(onNext, onFinish)
 	end
 end
 
+function Observable:run()
+	return self:subscribe(util.noop)
+end
+
 function State:v(...)
   local keyArr = {...}
   return vofk(keyArr, self._value)
@@ -184,6 +175,8 @@ function State:get( ... )
 	local keyArr = {...}
 	return self:map(function ( ... )
 		return vofk(keyArr,self._value)
+	end):filter(function (v)
+		return v ~= nil
 	end)
 end
 
@@ -379,6 +372,12 @@ function Biu:fromRange(from, to)
 			onNext(i,i)
 		end
 		onFinish()
+	end)
+end
+
+function Biu:promise(f)
+	return Biu:createOB(function (onNext, onFinish)
+		f(onFinish)
 	end)
 end
 
