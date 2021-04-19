@@ -4,12 +4,12 @@ local op = (require "Op").op
 local dump = util.dump
 
 -- test arr
-local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
-:scan(function (state, v, i)
-	return state + v*i, i
-end, 0)
-:value()
-util.dump(t, "test t")
+-- local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
+-- :scan(function (state, v, i)
+-- 	return state + v*i, i
+-- end, 0)
+-- :value()
+-- util.dump(t, "test t")
 
 
 -- test fromObj
@@ -60,9 +60,9 @@ util.dump(t, "test t")
 
 
 --test state  merge with join  arr delete order
-local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
-local state2 =biu:createState({b=4})
-local state3 =biu:createState({c=5})
+-- local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
+-- local state2 =biu:createState({b=4})
+-- local state3 =biu:createState({c=5})
 
 -- state1:merge(state2):dump("test merge"):subscribe(function ( ... )
 	
@@ -103,3 +103,15 @@ local state3 =biu:createState({c=5})
 -- 	print("test20")
 -- end)
 -- state4:set(2)
+
+
+--test tp
+
+local state = biu:createState()
+
+state:tp('aaa'):subscribe(function (v1, v2)
+	dump(v1, "test aaa")
+	dump(v2, "test aaa")
+end)
+
+state:set("aaa", {3}, {a={b=332}})

@@ -86,6 +86,7 @@ op.select = function (f)
 	end
 end
 
+op.filter = op.select
 
 op.reject = function (f)
 	return function (observerable)
@@ -541,7 +542,7 @@ op.tp = function (tp)
 		        local args = {...}
 		        if args[1] == tp then
 		            table.remove(args,1)
-		            return onNext(rx.util.unpack(args))
+		            return onNext(util.unpack(args))
 		        end
 			end, onFinish)
 		end)

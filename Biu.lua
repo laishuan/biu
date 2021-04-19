@@ -212,7 +212,7 @@ function State:any( ... )
 	end)
 end
 
-function State:set(data)
+function State:set(data, ...)
   local nextData = data
   local all = {}
   local hash = {}
@@ -251,7 +251,7 @@ function State:set(data)
       for i,order in ipairs(allKey) do
         local orderArr = self.observers[order]
         for ii = #orderArr, 1, -1 do
-          orderArr[ii][1](nextData)
+          orderArr[ii][1](nextData, ...)
         end
       end
     end
