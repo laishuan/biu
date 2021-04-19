@@ -147,6 +147,10 @@ function Observable:subscribe(onNext, onFinish)
 	end
 end
 
+function Observable:next(f)
+	return self:concat(Biu:promise(f))
+end
+
 function Observable:run()
 	return self:subscribe(util.noop)
 end
@@ -266,6 +270,8 @@ function State:finish( ... )
     self.stopped = true
   end
 end
+
+State.onCompleted = State.finish
 
 function State:order(order)
   return setmetatable({

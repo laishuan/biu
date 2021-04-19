@@ -3,6 +3,12 @@ local biu = require "Biu"
 local op = (require "Op").op
 local dump = util.dump
 
+local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
+local state2 =biu:createState({b=4})
+local state3 =biu:createState({c=5,d=1})
+
+
+
 -- test arr
 -- local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
 -- :scan(function (state, v, i)
@@ -60,17 +66,15 @@ local dump = util.dump
 
 
 --test state  merge with join  arr delete order
--- local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
--- local state2 =biu:createState({b=4})
--- local state3 =biu:createState({c=5})
 
 -- state1:merge(state2):dump("test merge"):subscribe(function ( ... )
-	
+-- 	print(...)
 -- end)
 
--- state1:with(state2):subscribe(function (a, b)
+-- state1:with(state2, state3):subscribe(function (a, b, c)
 -- 	dump(a, "with a")
 -- 	dump(b, "with b")
+-- 	dump(c, "with c")
 -- end)
 
 -- state1:sample(state2):dump("teset sample"):subscribe(function (a, b)
@@ -128,18 +132,23 @@ local dump = util.dump
 -- state:set({aaa=1})
 
 
-local state = biu:createState({a=1})
+-- local state = biu:createState({a=1})
 
-state:flatMap(function (v)
-	return biu
-	:promise(function (resolve)
-		anim1
-	end)
-	:concat(biu:promise(function (resolve)
-		anim1
-		-- body
-	end)):concat(biu:of(v))
-end)
-:subscribe(function ( ... )
-	-- body
-end)
+-- state:flatMap(function (v)
+-- 	return biu:promise(function (resolve)
+-- 	end)
+-- 	:next(function (resolve)
+-- 		-- body
+-- 	end)
+-- 	:next(function (resolve)
+-- 		-- body
+-- 	end)
+-- 	:next(function (resolve)
+-- 		-- body
+-- 	end)
+-- 	:next(function (resolve)
+-- 		-- body
+-- 	end)
+-- 	:concat(biu:of(v))
+-- end)
+-- :run()
