@@ -30,9 +30,7 @@ for k,v in pairs(op) do
 	end
 	State[k] = function (self, ... )
 		local f = v(...)
-		local _subscribe = function (onNext, onFinish)
-			self:subscribe(onNext, onFinish)
-		end
+		local _subscribe = self._subscribe
 		if k == "value" then
 			local ret
 			f(_subscribe)(function (v)
@@ -164,7 +162,7 @@ end
 
 function State:v(...)
   local keyArr = {...}
-  return vofk(keyArr, self.value)
+  return vofk(keyArr, self._value)
 end
 
 local getAllOB
@@ -185,7 +183,7 @@ end
 function State:get( ... )
 	local keyArr = {...}
 	return self:map(function ( ... )
-		return vofk(keyArr,self.value)
+		return vofk(keyArr,self._value)
 	end)
 end
 
@@ -208,7 +206,7 @@ function State:any( ... )
 	end):map(function (v)
 		local ret = {}
 		for i,keys in ipairs(keyArr) do
-			ret[i] = vofk(keys, self.value)
+			ret[i] = vofk(keys, self._value)
 		end
 		return unpack(ret)
 	end)
@@ -238,11 +236,12 @@ function State:set(data)
   	end):subscribe(self)
   end
 
-  -- util.dump(self.value, "befor combin")
+  -- util.dump(self._value, "befor combin")
   -- util.dump(data, "befor combin")
-  self.value = combinData(data, self.value)
-  -- util.dump(self.value, "after combin")
+  self._value = combinData(data, self._value)
+  -- util.dump(self._value, "after combin")
   if nextData ~= nil then
+  	-- util.dump( nextData, "test nextData")
     if not self.stopped then
       local allKey = util.keys(self.observers)
       table.sort( allKey, function (order1, order2)
@@ -275,8 +274,19 @@ function State:finish( ... )
   end
 end
 
+function State:order(order)
+  return setmetatable({
+    subscribe = function(_, onNext, onFinish)
+      return self:subscribe(onNext, onFinish, order)
+    end,
+    _subscribe = function (onNext, onFinish)
+      return self:subscribe(onNext, onFinish, order)
+    end
+  }, State)
+end
+
 function State:subscribe(onNext, onFinish, order)
-  order = order or 1
+  	order = order or 1
 	local orderArr = self.observers[order]
 	if not orderArr then
 	    orderArr = {}
@@ -305,8 +315,9 @@ function State:subscribe(onNext, onFinish, order)
 	        end
       end
     end
-    if self.value ~= nil then
-      	newNext(self.value)
+    if self._value ~= nil then
+    	-- util.dump(self._value, "call newNext")
+      	newNext(self._value)
     end
     return subscription
 end
@@ -331,7 +342,7 @@ function Biu:createState(data)
   if isObservable(data) then
     data:subscribe(self)
   else
-    self:set(data, true)
+    self:set(data)
   end
 
   return self

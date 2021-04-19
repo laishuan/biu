@@ -2,25 +2,27 @@ local util = require "Util"
 local biu = require "Biu"
 local op = (require "Op").op
 local dump = util.dump
--- local t = biu:fromArr({11,22,3, 1, 123123,123123})--:reverse()
--- :scan(function (state, v, i)
--- 	return state + v*i, i
--- end, 0)
--- :print("dump")
--- :value()
--- util.dump(t, "test t")
+
+-- test arr
+local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
+:scan(function (state, v, i)
+	return state + v*i, i
+end, 0)
+:value()
+util.dump(t, "test t")
 
 
+-- test fromObj
 -- dump(biu:fromObj({a=3, b=4}):startWith(5,"c")
 -- :map(function (v,k)
 -- 	return v+1, k
 -- end)
--- :print("fromObj")
 -- :value())
 
+--test fromRange
 -- dump(biu:fromRange(1,10):map(function (v, i)
 -- 	return v+1, i
--- end):print():value())
+-- end):value(), "range 1 10")
 
 -- dump(biu:fromRange(1,3)
 -- :pip(
@@ -32,10 +34,10 @@ local dump = util.dump
 -- 		return v > 2
 -- 	end)
 -- )
--- :print():value(), "test pip")
+-- :value(), "test pip")
 
 
-
+-- test state base
 -- local obable2 = biu:createState(3)
 -- local obable = biu:of({e=obable2})
 
@@ -46,8 +48,8 @@ local dump = util.dump
 -- 	v.e = v.e+1
 -- 	return v
 -- end)
--- :subscribe(function ( ... )
--- 	dump(..., "state subscribe")
+-- :subscribe(function (v)
+-- 	dump(v, "state subscribe")
 -- end)
 
 -- state:set({c={d={f=3}}})
@@ -57,9 +59,11 @@ local dump = util.dump
 -- obable2:set(5)
 
 
+--test state  merge with join  arr delete order
 local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
 local state2 =biu:createState({b=4})
 local state3 =biu:createState({c=5})
+
 -- state1:merge(state2):dump("test merge"):subscribe(function ( ... )
 	
 -- end)
@@ -89,3 +93,13 @@ local state3 =biu:createState({c=5})
 -- end)
 
 -- state1:set({arr={[2]="_delete"}, a="_delete"})
+
+
+-- local state4 = biu:createState(1)
+-- state4:order(10):subscribe(function ( ... )
+-- 	print("test10")
+-- end)
+-- state4:order(3):subscribe(function ( ... )
+-- 	print("test20")
+-- end)
+-- state4:set(2)
