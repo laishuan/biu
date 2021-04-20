@@ -2,6 +2,7 @@ local Biu = {}
 
 local OpData = require "Op"
 local util = require "Util"
+
 local op = OpData.op
 local createOBf = OpData.createOBf
 
@@ -194,10 +195,14 @@ function State:any( ... )
 	local keyArr = {...}
 	for i,v in ipairs(keyArr) do
 		if type(v) ~= "table" then
-		  keyArr[i] = {v}
+			if type(v) ~= "string" then
+			    keyArr[i] = {v}
+			else
+				keyArr[i] = util.split(v, ".")
+			end
 		end
 	end
-	return self:select(function (v)
+	return self:get():select(function (v)
 		local hadOne = false
 		for i,keys in ipairs(keyArr) do
 			if vofk(keys, v) ~= nil then
@@ -280,17 +285,31 @@ end
 State.onCompleted = State.finish
 
 function State:order(order)
-  return setmetatable({
-    subscribe = function(_, onNext, onFinish)
-      return self:subscribe(onNext, onFinish, order)
-    end,
-    _subscribe = function (onNext, onFinish)
-      return self:subscribe(onNext, onFinish, order)
-    end
-  }, State)
+	local newState
+	newState = {
+	    _subscribe = function (onNext, onFinish)
+			return self:subscribe(onNext, onFinish, order)
+		end,
+		subscribe = function (_, onNext, onFinish)
+			return self:subscribe(onNext, onFinish, order)
+		end,
+		_value = self._value
+	}
+	self:subscribe(function ( ... )
+		newState._value = self._value
+	end, util.noop, 999999999)
+	setmetatable(newState, State)
+
+    return newState
 end
 
 function State:subscribe(onNext, onFinish, order)
+	if onNext == nil then
+		onNext = util.noop
+	end
+	if onFinish == nil then
+		onFinish = util.noop
+	end
   	order = order or 1
 	local orderArr = self.observers[order]
 	if not orderArr then
@@ -304,9 +323,7 @@ function State:subscribe(onNext, onFinish, order)
 		newNext = function ( ... )
 	    	onNext:set(...)
 	    end
-	    newFinish = function ( ... )
-	    	
-	    end
+	    newFinish = util.noop
 	else
 		newNext, newFinish = onNext, onFinish
 	end
@@ -325,6 +342,18 @@ function State:subscribe(onNext, onFinish, order)
       	newNext(self._value)
     end
     return subscription
+end
+
+function Biu:isObservable( ... )
+	return isObservable(...)
+end
+
+function Biu:isState( ... )
+	return isState(...)
+end
+
+function Biu:diff( ... )
+	return util.diff(...)
 end
 
 function Biu:createOB(f)

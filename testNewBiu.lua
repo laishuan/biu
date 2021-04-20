@@ -63,7 +63,7 @@ local state3 =biu:createState({c=5,d=1})
 -- state:any("a", "b"):subscribe(function (a, b)
 -- 	print("4444444", a, b)
 -- end)
--- obable2:set(5)
+-- state:set({a=22})
 
 
 --test state  merge with join  arr delete order
@@ -180,3 +180,9 @@ local state3 =biu:createState({c=5,d=1})
 -- state:set(2)
 
 -- biu:of(1,2,3):tap(print):concat(biu:of(4,5,6):tap(print)):run()
+
+-- dump(util.split("aaa.b", "."))
+
+local state = biu:createState({index=3})
+state:order(2):get("index"):subscribe(print)
+state:set({index=222})
