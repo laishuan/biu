@@ -23,7 +23,11 @@ for k,v in pairs(op) do
 			f(self._subscribe)(function (v)
 				ret = v
 			end)
-			return ret
+			if ret.firstNoK and #ret.data == 1 then
+				return ret.data[1]
+			else
+				return ret.data
+			end
 		else
 			return Biu:createOB(f(self._subscribe))
 		end
@@ -177,8 +181,10 @@ end
 
 function State:get( ... )
 	local keyArr = {...}
-	return self:map(function ( ... )
-		return vofk(keyArr,self._value)
+	return self:map(function (v)
+		if vofk(keyArr, v) ~= nil then
+			return vofk(keyArr,self._value)
+		end
 	end):filter(function (v)
 		return v ~= nil
 	end)
@@ -334,7 +340,7 @@ function Biu:createState(data)
     observers = {},
     stopped = false,
     _subscribe = function (onNext, onFinish)
-		self:subscribe(onNext, onFinish)
+		return self:subscribe(onNext, onFinish)
 	end
   }
   setmetatable(self, State)
@@ -347,9 +353,12 @@ function Biu:createState(data)
   return self
 end
 
-function Biu:of(v)
+function Biu:of(...)
+	local args = {...}
 	return Biu:createOB(function (onNext, onFinish)
-		onNext(v)
+		for i,v in ipairs(args) do
+			onNext(v)
+		end
 		onFinish()
 	end)
 end

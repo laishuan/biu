@@ -14,6 +14,7 @@ local state3 =biu:createState({c=5,d=1})
 -- :scan(function (state, v, i)
 -- 	return state + v*i, i
 -- end, 0)
+-- :sum()
 -- :value()
 -- util.dump(t, "test t")
 
@@ -120,18 +121,6 @@ local state3 =biu:createState({c=5,d=1})
 
 -- state:set("aaa", {3}, {a={b=332}})
 
-
--- test get 
-
--- local state = biu:createState({a=1})
-
--- state:get('aaa'):subscribe(function (v)
--- 	print("test get", v)
--- end)
-
--- state:set({aaa=1})
-
-
 -- local state = biu:createState({a=1})
 
 -- state:flatMap(function (v)
@@ -152,3 +141,42 @@ local state3 =biu:createState({c=5,d=1})
 -- 	:concat(biu:of(v))
 -- end)
 -- :run()
+
+
+-- biu:of(false):map(function ( ... )
+-- 	return false, 1
+-- end):subscribe(function ( ... )
+-- 	print(...)
+-- end)
+
+-- local state = biu:createState({d={1,2,3}, e=false})
+-- state:get("e"):subscribe(function (v)
+-- 	print('111111111')
+-- 	dump(v, "test get 2 args")
+-- end)
+-- state:set({e=false})
+
+
+-- biu:of(1):tap(function ( ... )
+-- 	print("test tap", ...)
+-- end):run()
+
+
+-- biu:of(1):flatMap(function (v)
+-- 	return biu:of(v, 2,3):map(function (v)
+-- 		return v+1
+-- 	end)
+-- end):subscribe(function (v)
+-- 	print("test flatMap:", v)
+-- end)
+
+-- local state = biu:createState(3)
+-- state:changeFrom(1):tap(function ( ... )
+-- 	print("test change to ", ...)
+-- end):run()
+-- state:set(1)
+-- state:set(1)
+-- state:set(1)
+-- state:set(2)
+
+-- biu:of(1,2,3):tap(print):concat(biu:of(4,5,6):tap(print)):run()

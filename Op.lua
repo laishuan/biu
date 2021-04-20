@@ -53,6 +53,17 @@ op.print = function (prefix)
 	end
 end
 
+op.tap = function (f)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			return observerable(function (...)
+				f(...)
+				onNext(...)
+			end, onFinish)
+		end)
+	end
+end
+
 op.pip = function (...)
 	local args = {...}
 	local f = util.identity
@@ -108,7 +119,11 @@ op.reduce = function (f, state)
 			return observerable(function (...)
 				local args = {...}
 				if first then
-					state = state and f(state, ...) or f(args[1], ...)
+					if state ~= nil then
+						state = f(state, ...)
+					else
+						state = args[1]
+					end
 					first = false
 				else
 					state = f(state, ...)
@@ -129,7 +144,11 @@ op.scan = function (f, state)
 			return observerable(function (...)
 				local args = {...}
 				if first then
-					state = state and f(state, ...) or f(args[1], ...)
+					if state ~= nil then
+						state = f(state, ...)
+					else
+						state = args[1]
+					end
 					first = false
 				else
 					state = f(state, ...)
@@ -272,22 +291,21 @@ op.min = function ()
 end
 
 op.value = function ()
-	local value, firstK, firstV
-	local count = 0
+	local first = true
+	local value = {firstNoK = false, data = {}}
 	return op.reduce(function (state, v, k)
-		count = count + 1
-		if count > 1 then
-			if not value then
-				value = {}
-				value[firstK] = firstV
-			end
-			value[k] = v
-		else
-			firstV = v
-			firstK = k or 1
+		if first then
+			value.firstNoK = (k == nil)
+			first = false
 		end
-		return value or firstV
-	end)
+		local data = value.data
+		if k ~= nil then
+			data[k] = v
+		else
+			data[#data+1] = v
+		end
+		return value
+	end, value)
 end
 
 op.sample = function (sampler)
@@ -326,8 +344,8 @@ op.flatten = function ()
 		      end
 		    end
 			observerable(function (v)
-				subscriptions[#subscriptions+1] = v(function ( ... )
-					remaining = remaining
+				subscriptions[#subscriptions+1] = v:subscribe(function ( ... )
+					remaining = remaining + 1
 					onNext(...)
 				end, util.noop)
 			end, newFinish)
@@ -409,20 +427,36 @@ op.skip = function (n)
 	end
 end
 
-op.get = function (key, ...)
-	local otherKeys = {...}
-	return function (observerable)
-		if not key then return observerable end
 
-		if type(key) ~= 'string' and type(key) ~= 'number' then
-		    return assert('get key must be a string')
-		end
-		return createOBf(function (onNext, onFinish)
-			return op.get(util.unpack(otherKeys))(observerable(function (t)
-				onNext(t[key])
-			end, onFinish))
-		end)
+op.get = function (key, ...)
+	local getOne = function (key, first)
+	    return function (observerable)
+		    return createOBf(function (onNext, onFinish)
+		        return observerable(function (t)
+		          if type(t) ~= "table" then
+		          	onNext(nil)
+		          elseif first then
+		          	local v = t
+		          	if key ~= nil then v = t[key] end
+			        onNext(v)
+		          else
+		          	local v
+		          	if key then v = t[key] end
+		          	onNext(v)
+			      end
+		        end, onFinish)
+		    end)
+	    end
 	end
+	local keyArr = {...}
+    local arr = {getOne(key, true)}
+    for i,v in ipairs(keyArr) do
+      arr[#arr+1] = getOne(v)
+    end
+    arr[#arr+1] = op.select(function (v)
+		return v ~= nil
+	end)
+    return op.pip(util.unpack(arr))
 end
 
 op.pluck = op.get
@@ -692,6 +726,7 @@ op.with = function ( ... )
 end
 
 op.startWith = function ( ... )
+	local args = {...}
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
 			onNext(util.unpack(args))
@@ -700,19 +735,26 @@ op.startWith = function ( ... )
 	end
 end
 
-op.concat = function (other,  ... )
+op.concat = function (other, ... )
 	local others = {...}
-	return function (observerable)
-		return createOBf(function (onNext, onFinish)
-  			if not other then return observerable end
-			
-		    local function chain()
-		      return other:concat(util.unpack(others)):subscribe(onNext,  onFinish)
-		    end
-
-		    return observerable(onNext, chain)
-		end)
+	local concatOne = function (other)
+		return function (observerable)
+			return createOBf(function (onNext, onFinish)
+				return observerable(util.noop, function (...)
+					local args = {...}
+					return other:subscribe(util.noop, onFinish)
+				end)
+			end)
+		end
 	end
+
+	local arr = {concatOne(other)}
+
+	for i,v in ipairs(others) do
+		arr[#arr+1] = concatOne(v)
+	end
+
+	return op.pip(util.unpack(arr))
 end
 
 return {
