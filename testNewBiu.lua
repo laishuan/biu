@@ -179,10 +179,10 @@ local state3 =biu:createState({c=5,d=1})
 -- state:set(1)
 -- state:set(2)
 
--- biu:of(1,2,3):tap(print):concat(biu:of(4,5,6):tap(print)):run()
+-- biu:of(1,2,3):tap(print):concat(biu:of(4,5,6):tap(print)):concat(biu:of(6454545,5,6):tap(print)):run()
 
 -- dump(util.split("aaa.b", "."))
 
-local state = biu:createState({index=3})
-state:order(2):get("index"):subscribe(print)
-state:set({index=222})
+-- local state = biu:createState({index=3})
+-- state:order(2):get("index"):subscribe(print)
+-- state:set({index=222})

@@ -16,26 +16,6 @@ local State = setmetatable({}, Observable)
 State.__index = State
 State.__tostring = util.constant('State')
 
-for k,v in pairs(op) do
-	Observable[k] = function (self, ... )
-		local f = v(...)
-		if k == "value" then
-			local ret
-			f(self._subscribe)(function (v)
-				ret = v
-			end)
-			if ret.firstNoK and #ret.data == 1 then
-				return ret.data[1]
-			else
-				return ret.data
-			end
-		else
-			return Biu:createOB(f(self._subscribe))
-		end
-	end
-end
-
-
 local combinData, vofk, isObservable, isState
 
 isObservable = function(object)
@@ -139,6 +119,33 @@ combinData = function (to, from)
   end
   return newTo
 end
+
+
+for k,v in pairs(op) do
+	Observable[k] = function (self, ... )
+		local args = {...}
+		for i,v in ipairs(args) do
+			if isObservable(v) then
+				args[i] = v._subscribe
+			end
+		end
+		local f = v(util.unpack(args))
+		if k == "value" then
+			local ret
+			f(self._subscribe)(function (v)
+				ret = v
+			end)
+			if ret.firstNoK and #ret.data == 1 then
+				return ret.data[1]
+			else
+				return ret.data
+			end
+		else
+			return Biu:createOB(f(self._subscribe))
+		end
+	end
+end
+
 
 function Observable:subscribe(onNext, onFinish)
 	assert(isState(onNext) or type(onNext) == "function", "onNext type error")

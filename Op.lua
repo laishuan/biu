@@ -317,7 +317,7 @@ op.sample = function (sampler)
 				values = {...}
 			end, util.noop)
 
-			local stop2 = sampler:subscribe(function ( ... )
+			local stop2 = sampler(function ( ... )
 				if values ~= nil then
 					onNext(util.unpack(values))
 				end
@@ -344,7 +344,7 @@ op.flatten = function ()
 		      end
 		    end
 			observerable(function (v)
-				subscriptions[#subscriptions+1] = v:subscribe(function ( ... )
+				subscriptions[#subscriptions+1] = v(function ( ... )
 					remaining = remaining + 1
 					onNext(...)
 				end, util.noop)
@@ -373,7 +373,7 @@ op.switch = function ( ... )
 		        	innerSubscription()
 		      	end
 
-		      	innerSubscription = source:subscribe(onNext)
+		      	innerSubscription = source(onNext)
 		    end
 
 
@@ -503,14 +503,9 @@ op.join = function ( ... )
 	local sources = {...}
 	return function (observerable)
 
-		local combinator = table.remove(sources)
-		if type(combinator) ~= 'function' then
-		    table.insert(sources, combinator)
-		    combinator = function(...) return ... end
-		end
-		table.insert(sources, 1, {subscribe = function (self, ... )
-			observerable(...)
-		end})
+		local combinator = function(...) return ... end
+
+		table.insert(sources, 1, observerable)
 
 		return createOBf(function (onNext, onFinish)
 			local latest = {}
@@ -540,7 +535,7 @@ op.join = function ( ... )
 		    end
 
 		    for i = 1, #sources do
-  		        subscription[i] = sources[i]:subscribe(newNext(i), newFinish(i))
+  		        subscription[i] = sources[i](newNext(i), newFinish(i))
 		    end
 
 		    return function ( ... )
@@ -624,7 +619,7 @@ op.flatMapLatest = function (callback)
 			    if innerSubscription then
 			        innerSubscription()
 			    end
-			    innerSubscription = callback(...):subscribe(onNext)
+			    innerSubscription = callback(...)(onNext)
 		    end
 
 		    local subscription = observerable(subscribeInner, onFinish)
@@ -644,9 +639,7 @@ end
 op.merge = function ( ... )
 	local sources = {...}
 	return function (observerable)
-		table.insert(sources, 1, {subscribe = function (self, ... )
-			observerable(...)
-		end})
+		table.insert(sources, 1, observerable)
 
 		return createOBf(function (onNext, onFinish)
 		    local completed = {}
@@ -663,7 +656,7 @@ op.merge = function ( ... )
 		    end
 
 		    for i = 1, #sources do
-		      subscriptions[i] = sources[i]:subscribe(onNext, newFinish(i))
+		      subscriptions[i] = sources[i](onNext, newFinish(i))
 		    end
 
 		    return function ()
@@ -713,7 +706,7 @@ op.with = function ( ... )
       			return onNext(value, util.unpack(latest))
 		    end
 		    for i = 1, #sources do
-		        subscriptions[i] = sources[i]:subscribe(setLatest(i), util.noop)
+		        subscriptions[i] = sources[i](setLatest(i), util.noop)
 		    end
 		    subscriptions[#sources + 1] = observerable(newNext, onFinish)
 		    return function ( ... )
@@ -742,7 +735,7 @@ op.concat = function (other, ... )
 			return createOBf(function (onNext, onFinish)
 				return observerable(util.noop, function (...)
 					local args = {...}
-					return other:subscribe(util.noop, onFinish)
+					return other(util.noop, onFinish)
 				end)
 			end)
 		end
