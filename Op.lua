@@ -54,6 +54,7 @@ op.print = function (prefix)
 end
 
 op.tap = function (f)
+	f = f or util.noop
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
 			return observerable(function (...)

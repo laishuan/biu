@@ -186,3 +186,21 @@ local state3 =biu:createState({c=5,d=1})
 -- local state = biu:createState({index=3})
 -- state:order(2):get("index"):subscribe(print)
 -- state:set({index=222})
+
+
+-- local ob = biu:createState({[1]=2,[2] = 3,[3]=2,[4]="_delete"})
+-- local state = biu:createState(ob)
+-- state:get():dump("test _delete"):run()
+-- ob:set({[1]=2,[2] = 13,[3]="_delete"})
+-- ob:set({[1]=2,[2] = 13,[3]="1"})
+-- ob:set({[1]=1,[2]="_delete"})
+
+-- local state = biu:createState(1)
+-- local a = state:subscribe(function ( ... )
+-- 	print(...)
+-- end)
+
+-- state:set(2)
+-- state:set(3)
+-- a()
+-- state:set(4)

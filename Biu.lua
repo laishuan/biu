@@ -89,6 +89,11 @@ combinData = function (to, from)
   end
 
    if type(from) ~= "table" or isObservable(from) or isNode(to) then
+   	  for k,v in pairs(newTo) do
+   	  	if v == "_delete" then
+   	  		newTo[k] = nil
+   	  	end
+   	  end
       return newTo
   end
 
