@@ -30,25 +30,46 @@ local createOBf = function (f)
 	end
 end
 
+op.next = function (f)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			return observerable(util.noop, function ( ... )
+				local args = {...}
+				createOBf(function (innerOnNext, innerOnFinish)
+					f(innerOnFinish, util.unpack(args))
+				end)(util.noop, onFinish)
+			end)
+		end)
+	end
+end
+
 op.dump = function (prefix)
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
 			return observerable(function (...)
 				prefix = prefix or ""
-				util.dump({...}, "op_dump: " .. prefix)
+				util.dump({...}, "op_dump_next: " .. prefix)
 				onNext(...)
-			end, onFinish)
+			end, function ( ... )
+				util.dump({...}, "op_dump_finish: " .. prefix)
+				onFinish(...)
+			end)
 		end)
 	end
 end
+
 op.print = function (prefix)
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
 			return observerable(function (...)
 				prefix = prefix or ""
-				print(prefix, ...)
+				print(prefix .. "_next", ...)
 				onNext(...)
-			end, onFinish)
+			end, function ( ... )
+				prefix = prefix or ""
+				print(prefix .. "_finish", ...)
+				onFinish(...)
+			end)
 		end)
 	end
 end

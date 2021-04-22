@@ -164,10 +164,6 @@ function Observable:subscribe(onNext, onFinish)
 	end
 end
 
-function Observable:next(f)
-	return self:concat(Biu:promise(f))
-end
-
 function Observable:run()
 	return self:subscribe(util.noop)
 end
@@ -431,9 +427,10 @@ function Biu:fromRange(from, to)
 	end)
 end
 
-function Biu:promise(f)
+function Biu:promise(f, ...)
+	local args = {...}
 	return Biu:createOB(function (onNext, onFinish)
-		f(onFinish)
+		f(onFinish, util.unpack(args))
 	end)
 end
 

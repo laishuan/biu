@@ -204,3 +204,25 @@ local state3 =biu:createState({c=5,d=1})
 -- state:set(3)
 -- a()
 -- state:set(4)
+
+
+local obPms = biu:promise(function (resolve)
+	resolve({a=2,b=2,c={aa=1,bb={aaa=1}}})	
+end)
+obPms:next(function (resolve, data)
+	data.a = data.a+1
+	resolve(data)
+end)
+:print('after 1')
+:next(function (resolve, data)
+	data.b = 20
+	resolve(data)
+end)
+:print("after 2")
+:next(function (resolve, data)
+	data.d = data.c
+	data.c = {e=3}
+	resolve(data)
+end)
+:print("after 3")
+:run()
