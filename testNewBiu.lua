@@ -8,6 +8,7 @@ local state2 =biu:createState({b=4})
 local state3 =biu:createState({c=5,d=1})
 
 
+dump(util.diff({a=1}, {a=1,c=1}))
 
 -- test arr
 -- local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
@@ -101,13 +102,19 @@ local state3 =biu:createState({c=5,d=1})
 
 
 -- local state4 = biu:createState(1)
--- state4:order(10):subscribe(function ( ... )
+-- local state5 = state4:order(11)
+
+-- state5:subscribe(function ( ... )
+-- 	print("test state5", ...)
+-- end)
+
+-- state4:order(101):subscribe(function ( ... )
 -- 	print("test10")
 -- end)
--- state4:order(3):subscribe(function ( ... )
+-- state4:order(31):subscribe(function ( ... )
 -- 	print("test20")
 -- end)
--- state4:set(2)
+-- state4:set(22)
 
 
 --test tp
@@ -206,23 +213,35 @@ local state3 =biu:createState({c=5,d=1})
 -- state:set(4)
 
 
-local obPms = biu:promise(function (resolve)
-	resolve({a=2,b=2,c={aa=1,bb={aaa=1}}})	
+-- local obPms = biu:promise(function (resolve)
+-- 	resolve({a=2,b=2,c={aa=1,bb={aaa=1}}})	
+-- end)
+-- obPms:next(function (resolve, data)
+-- 	data.a = data.a+1
+-- 	resolve(data)
+-- end)
+-- :print('after 1')
+-- :next(function (resolve, data)
+-- 	data.b = 20
+-- 	resolve(data)
+-- end)
+-- :print("after 2")
+-- :next(function (resolve, data)
+-- 	data.d = data.c
+-- 	data.c = {e=3}
+-- 	resolve(data)
+-- end)
+-- :print("after 3")
+-- :run()
+
+
+local state1 = biu:createState(false)
+local temp = state1:map(function ( ... )
+	return false
 end)
-obPms:next(function (resolve, data)
-	data.a = data.a+1
-	resolve(data)
+local state2 = biu:createState(1)
+temp:join(state2):subscribe(function ( ... )
+	print (...)
 end)
-:print('after 1')
-:next(function (resolve, data)
-	data.b = 20
-	resolve(data)
-end)
-:print("after 2")
-:next(function (resolve, data)
-	data.d = data.c
-	data.c = {e=3}
-	resolve(data)
-end)
-:print("after 3")
-:run()
+print(true and 3==2)
+state2:set(333)

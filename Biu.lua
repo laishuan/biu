@@ -199,6 +199,10 @@ function State:get( ... )
 	end)
 end
 
+function State:getMap(f)
+  return self:get():map(f)
+end
+
 function State:any( ... )
 	local keyArr = {...}
 	for i,v in ipairs(keyArr) do
@@ -293,22 +297,11 @@ end
 State.onCompleted = State.finish
 
 function State:order(order)
-	local newState
-	newState = {
-	    _subscribe = function (onNext, onFinish)
-			return self:subscribe(onNext, onFinish, order)
-		end,
-		subscribe = function (_, onNext, onFinish)
-			return self:subscribe(onNext, onFinish, order)
-		end,
-		_value = self._value
-	}
-	self:subscribe(function ( ... )
-		newState._value = self._value
-	end, util.noop, 999999999)
-	setmetatable(newState, State)
-
-    return newState
+  return setmetatable({
+      _subscribe = function (onNext, onFinish)
+      return self:subscribe(onNext, onFinish, order)
+    end,
+  }, Observable)
 end
 
 function State:subscribe(onNext, onFinish, order)
