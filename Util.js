@@ -20,9 +20,20 @@ let loopKes = (t)=>{
         return [vv, kk]
     })
 }
+
+let del = (t, k)=>{
+    console.assert(isTable(t), "t must be object or array")
+    if (type(t) === "Array") {
+        t.splice(k,1)
+    }
+    else {
+        delete t[k]
+    }
+}
 util.isTable = isTable
 util.type = type
 util.loopKes = loopKes
+util.del = del
 util.eq = (x,y)=>{return x===y}
 util.noop = ()=>{}
 util.identity = x=>x
@@ -106,7 +117,7 @@ util.dump = (t, prefix, deep) => {
         console.log(util.toStr(t))
 }
 // console.log(util.toStr({"a":{"b":[1,2,3], "ddd": 123}}))
-// console.log(util.keys([123123,1,1,1,1]))
+console.log(util.keys([123123,1,1,1,1]))
 // util.dump(loopKes({"a":1, "b":2}), "test loopKeys")
 // let diff = util.diff(
 //     {"a":{"b":[1,11,3], "ddd": 123}}, 

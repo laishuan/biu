@@ -50,6 +50,11 @@ op.tap = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>
         onNext(...args)
     },onFinish)
 )
+
+op.unpack = ()=>observerable=>createOBf((onNext, onFinish)=>observerable(args=>{
+    onNext(...args)
+},onFinish))
+
 op.pip = (...args)=>{
     let f = util.identity
     return observerable=>{
@@ -60,7 +65,8 @@ op.pip = (...args)=>{
     }
 }
 op.map = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
-        onNext(f(...args))
+        let otherArgs = args.slice(1)
+        onNext(f(...args), ...otherArgs)
     }, onFinish)
 )
 
