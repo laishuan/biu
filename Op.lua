@@ -201,14 +201,14 @@ end
 op.findIndex = function (f)
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
-			local index
+			local index = -1
 			local newFinish = function ( ... )
 				onNext(index)
 				onFinish()
 			end
 
 			return observerable(function ( ... )
-				if not index and f(...) then
+				if index < 0 and f(...) then
 					local args = {...}
 					index = args[2]
 				end
@@ -269,9 +269,11 @@ op.groupBy = function (f)
 				local args = {...}
 				local v, k = args[1], args[2]
 			    local _key = f(v,k)
-			    if _t[_key] then _t[_key][#_t[_key]+1] = v
-			    else _t[_key] = {v}
-			    end
+			    if _key then
+				    if _t[_key] then _t[_key][#_t[_key]+1] = v
+				    else _t[_key] = {v}
+				    end
+				end
 			end, newFinish)
 		end)
 	end
@@ -290,7 +292,9 @@ op.countBy = function (f)
 				local args = {...}
 				local v, i = args[1], args[2]
 			    local key = f(v,i)
-			    _t[key] = (_t[key] or 0)+1
+			    if key then
+				    _t[key] = (_t[key] or 0)+1
+				end
 			end, newFinish)
 		end)
 	end
@@ -578,9 +582,10 @@ op.change = function (comparator)
 
 			local newNext = function (value, ...)
 				local values = {...}
-		        if first or not comparator(value, currentValue) then
+				local isEqual = comparator(value, currentValue)
+				currentValue = value
+		        if first or not isEqual then
 		            onNext(value, util.unpack(values))
-		            currentValue = value
 		            first = false
 		        end
 			end
@@ -746,6 +751,23 @@ op.startWith = function ( ... )
 		return createOBf(function (onNext, onFinish)
 			onNext(util.unpack(args))
 			return observerable(onNext, onFinish)
+		end)
+	end
+end
+
+op.push = function (v)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			local count = 0
+			local newOnNext = function ( ... )
+				count = count + 1
+				onNext(...)
+			end
+			local newFinish = function ( ... )
+				onNext(v, count+1)
+				onFinish(...)
+			end
+			return observerable(newOnNext, newFinish)
 		end)
 	end
 end

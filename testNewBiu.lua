@@ -235,13 +235,42 @@ dump(util.diff({a=1}, {a=1,c=1}))
 -- :run()
 
 
-local state1 = biu:createState(false)
-local temp = state1:map(function ( ... )
-	return false
-end)
-local state2 = biu:createState(1)
-temp:join(state2):subscribe(function ( ... )
-	print (...)
-end)
-print(true and 3==2)
-state2:set(333)
+-- local state1 = biu:createState(false)
+-- local temp = state1:map(function ( ... )
+-- 	return false
+-- end)
+-- local state2 = biu:createState(1)
+-- temp:join(state2):subscribe(function ( ... )
+-- 	print (...)
+-- end)
+-- print(true and 3==2)
+-- state2:set(333)
+
+-- local state = biu:createState("")
+-- local count = 1
+-- state:changeTo("evt"):subscribe(function ( ... )
+-- 	print('enter evt')
+-- 	count = count + 1
+-- 	if count < 10 then
+-- 		state:set("check")
+-- 	end
+-- end)
+
+-- state:changeTo("wait"):subscribe(function ( ... )
+-- 	print('enter wait')
+-- 	count = count + 1
+-- 	if count < 10 then
+-- 		state:set("evt")
+-- 	end
+-- end)
+
+-- state:changeTo("check"):subscribe(function ( ... )
+-- 	print('enter check')
+-- 	count = count + 1
+-- 	-- print("count:", count)
+-- 	if count < 10 then
+-- 		state:set("wait")
+-- 	end
+-- end)
+
+-- state:set("wait")

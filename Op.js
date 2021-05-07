@@ -130,13 +130,13 @@ op.reverse = ()=>observerable=>createOBf((onNext, onFinish)=>{
     })
 })
 op.findIndex = f=>observerable=>createOBf((onNext, onFinish)=>{
-    let index
+    let index = -1
     let newFinish = (...args)=>{
         onNext(index)
         onFinish(...args)
     }
     return observerable((...args)=>{
-        if (!index && f(...args)) {
+        if (index < 0 && f(...args)) {
             index = args[1]
         }
     }, newFinish)
@@ -172,8 +172,10 @@ op.groupBy = f=>observerable=>createOBf((onNext, onFinish)=>{
     return observerable((...args)=>{
         let [v,k] = args
         let _key = f(v,k)
-        if (_t[_key]) _t[_key].push(v)
-        else _t[_key]=[v]
+        if (_key !== undefined) {
+            if (_t[_key]) _t[_key].push(v)
+            else _t[_key]=[v]
+        }
     }, newFinish)
 })
 
@@ -186,7 +188,9 @@ op.countBy = f=>observerable=>createOBf((onNext, onFinish)=>{
     return observerable((...args)=>{
         let [v,i] = args
         let _key = f(v,k)
-        _t[_key] = (_t[_key] || 0) + 1
+        if (_key) {
+            _t[_key] = (_t[_key] || 0) + 1
+        }
     }, newFinish)
 })
 
@@ -391,9 +395,10 @@ op.change = comparator=>observerable=>createOBf((onNext, onFinish)=>{
     let currentValue = undefined
 
     let newNext = (value, ...args)=>{
-        if (first || !comparator(value, currentValue)) {
+        let isEqual = comparator(value, currentValue)
+        currentValue = value
+        if (first || !isEqual) {
             onNext(value, ...args)
-            currentValue = value
             first = false
         }
     }
@@ -500,6 +505,19 @@ op.with = (...sources)=>observerable=>createOBf((onNext, onFinish)=>{
 op.startWith = (...args)=>observerable=>createOBf((onNext, onFinish)=>{
     onNext(...args)
     return observerable(onNext, onFinish)
+})
+
+op.push = v=>observerable=>createOBf((onNext, onFinish)=>{
+    let count = 0
+    let newOnNext = (...args)=>{
+        count = count + 1
+        onNext(...args)
+    }
+    let newFinish = (...args)=>{
+        onNext(v, count+1)
+        onFinish(...args)
+    }
+    return observerable(newOnNext, newFinish)
 })
 
 op.concat = (other, ...others)=>{
