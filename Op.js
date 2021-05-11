@@ -55,6 +55,16 @@ op.unpack = ()=>observerable=>createOBf((onNext, onFinish)=>observerable(args=>{
     onNext(...args)
 },onFinish))
 
+op.breakup = ()=>observerable=>createOBf((onNext, onFinish)=>observerable(t=>{
+    util.loopKes(t).forEach(([v,k])=>{
+        if (util.type(k) === "Number")
+            onNext(v,k+1)
+        else
+            onNext(v,k)
+    })
+},onFinish))
+
+
 op.pip = (...args)=>{
     let f = util.identity
     return observerable=>{
@@ -76,6 +86,24 @@ op.select = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args
 )
 
 op.filter=op.select
+
+op.sort = f=>observerable=>createOBf((onNext, onFinish)=>observerable((v)=>{
+    let newf = (a,b)=>f(a,b)?-1:1
+    
+    onNext(v.sort(newf))
+},onFinish)
+)
+
+op.shuffle = ()=>observerable=>createOBf((onNext, onFinish)=>observerable((arr)=>{
+    let _shuffled=[]
+    arr.forEach((v,i)=>{
+        let randPos = Math.floor(Math.random()*i)
+        _shuffled[i] = _shuffled[randPos]
+        _shuffled[randPos] = v
+    })
+    onNext(_shuffled)
+},onFinish)
+)
 
 op.reject = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
     if (!f(...args)) onNext(...args)
@@ -119,13 +147,9 @@ op.scan = (f,state)=>observerable=>createOBf((onNext, onFinish)=>{
     }, onFinish)
 })
 op.reverse = ()=>observerable=>createOBf((onNext, onFinish)=>{
-    let arr = []
-    return observerable((...args)=>{
-        arr.push(args)
+    return observerable((arr)=>{
+        onNext(arr.reverse())
     }, (...args)=>{
-        arr.reverse().forEach((v,i)=>{
-            onNext(v, i+1)
-        })
         onFinish(...args)
     })
 })
@@ -522,7 +546,7 @@ op.push = v=>observerable=>createOBf((onNext, onFinish)=>{
 
 op.concat = (other, ...others)=>{
     let concatOne = o=>observerable=>createOBf((onNext, onFinish)=>observerable(util.noop, (...args)=>{
-            return o(util.noop, onFinish)
+            return o(onNext, onFinish)
         })
     )
     let arr = [concatOne(other)]
@@ -531,3 +555,57 @@ op.concat = (other, ...others)=>{
     })
     return op.pip(...arr)
 }
+
+op.wait = (other, ...others)=>{
+    let concatOne = o=>observerable=>createOBf((onNext, onFinish)=>other(util.noop, (...args)=>{
+            return observerable(onNext, onFinish)
+        })
+    )
+    let arr = [concatOne(other)]
+    others.forEach((v,i)=>{
+        arr.push(concatOne(v))
+    })
+    return op.pip(...arr)
+}
+
+let of = (...args)=>{
+    return (onNext, onFinish)=>{
+        util.loopKes(args).forEach(([v,i])=>{
+            onNext(v, i+1)
+        })
+        onFinish()
+    }
+}
+
+// op.pip(
+//     op.map(v=>v+2), 
+//     // op.select(v=>v>4),
+//     op.reject(v=>v>6),
+//     // op.reduce((a,b)=>a+b),
+//     op.scan((a,b)=>a+b),
+//     // op.dump("test dump: ")
+//     // op.print('123--test print')
+//     // op.tap((...args)=>{console.log("tap here: ", ...args)})
+// )(of(3,4,5))(console.log)
+
+// op.map(v=>v+1)(of(3,4,5))(console.log)
+
+// op.pip(
+//     op.unpack(), 
+//     op.dump('test unpack: ')
+//     // op.print('123--test print')
+//     // op.tap((...args)=>{console.log("tap here: ", ...args)})
+// )(of([1,2,322]))(util.noop)
+
+// op.sort((a,b)=>a>b)(of([3,4,1,5]))(console.log)
+
+// op.shuffle()(of([3,4,1,5,12,333,1123]))(console.log)
+
+// op.reverse()(of([3,4,1,5,12,333,1123]))(console.log)
+
+// op.breakup()(of([3,4,1,5,12,333,1123]))(console.log)
+// op.breakup()(of({"a":1, "b":2, "c": 3}))(console.log)
+
+// op.findIndex(v=>v===3323)(of(3,4,1,5,12,333,1123))(console.log)
+// op.findValue(333)(of(3,4,1,5,12,333,1123))(console.log)
+op.all(v=>v>0)(of(-3,4,1,5,12,333,1123))(console.log)

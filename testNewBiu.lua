@@ -274,3 +274,9 @@ dump(util.diff({a=1}, {a=1,c=1}))
 -- end)
 
 -- state:set("wait")
+
+-- local state1 = biu:of(123)
+-- local state2 = state1:wait(biu:of(1,2,3))
+-- state2:subscribe(print)
+
+dump(biu:of({a=1,b=2,c=3}):breakup():print("trest"):value())

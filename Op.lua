@@ -86,6 +86,30 @@ op.tap = function (f)
 	end
 end
 
+op.unpack = function ( ... )
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			return observerable(function (v)
+				onNext(util.unpack(v))
+			end, onFinish)
+		end)
+	end
+end
+
+op.breakup = function ( ... )
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			return observerable(function (v)
+				local keys = util.keys(v)
+				table.sort(keys)
+				for i,k in ipairs(keys) do
+					onNext(v[k], k)
+				end
+			end, onFinish)
+		end)
+	end
+end
+
 op.pip = function (...)
 	local args = {...}
 	local f = util.identity
@@ -120,6 +144,33 @@ op.select = function (f)
 end
 
 op.filter = op.select
+
+op.sort = function (f)
+  return function (observerable)
+    return createOBf(function (onNext, onFinish)
+      return observerable(function (v)
+        table.sort(v, f)
+        onNext(v)
+      end, onFinish)
+    end)
+  end
+end
+
+op.shuffle = function ()
+  return function (observerable)
+    return createOBf(function (onNext, onFinish)
+      return observerable(function (t)
+        local _shuffled = {}
+        for index, value in ipairs(t) do
+          local randPos = math.floor(math.random()*index)+1
+          _shuffled[index] = _shuffled[randPos]
+          _shuffled[randPos] = value
+        end
+        onNext(_shuffled)
+      end, onFinish)
+    end)
+  end
+end
 
 op.reject = function (f)
 	return function (observerable)
@@ -184,15 +235,14 @@ end
 op.reverse = function ( ... )
 	return function (observerable, ...)
 		return createOBf(function (onNext, onFinish)
-			local arr = {}
-			return observerable(function (...)
-				table.insert(arr, 1, {...})
-			end, function ( ... )
-				for i=1, #arr do
-					local v = arr[i]
-					onNext(v[1], #arr - v[2] + 1)
+			return observerable(function (t)
+				local arr = {}
+				for i,v in ipairs(t) do
+					table.insert(arr, 1, v)
 				end
-				onFinish()
+				onNext(arr)
+			end, function ( ... )
+				onFinish(...)
 			end)
 		end)
 	end
@@ -779,7 +829,7 @@ op.concat = function (other, ... )
 			return createOBf(function (onNext, onFinish)
 				return observerable(util.noop, function (...)
 					local args = {...}
-					return other(util.noop, onFinish)
+					return other(onNext, onFinish)
 				end)
 			end)
 		end
@@ -794,7 +844,30 @@ op.concat = function (other, ... )
 	return op.pip(util.unpack(arr))
 end
 
+op.wait = function (other, ... )
+  local others = {...}
+  local concatOne = function (other)
+    return function (observerable)
+      return createOBf(function (onNext, onFinish)
+        return other(util.noop, function (...)
+          local args = {...}
+          return observerable(onNext, onFinish)
+        end)
+      end)
+    end
+  end
+
+  local arr = {concatOne(other)}
+
+  for i,v in ipairs(others) do
+    arr[#arr+1] = concatOne(v)
+  end
+
+  return op.pip(util.unpack(arr))
+end
+
 return {
 	op = op,
 	createOBf = createOBf
 }
+

@@ -79,7 +79,7 @@ util.diff = (t1, t2)=>{
         return ret
     }
     loopKes(t1).forEach(([v,k])=>{
-        print (v, k)
+        // print (v, k)
         let v2 = t2[k]
         if (type(v) !== type(v2)) {
             if (v2 !== undefined) {
@@ -117,13 +117,13 @@ util.dump = (t, prefix, deep) => {
         console.log(util.toStr(t))
 }
 // console.log(util.toStr({"a":{"b":[1,2,3], "ddd": 123}}))
-console.log(util.keys([123123,1,1,1,1]))
+// console.log(util.keys([123123,1,1,1,1]))
 // util.dump(loopKes({"a":1, "b":2}), "test loopKeys")
 // let diff = util.diff(
-//     {"a":{"b":[1,11,3], "ddd": 123}}, 
+//     {"a":{"b":[1,11,3], "ddd": 123, "e": 1}}, 
 //     {"a":{"b":[1,2,3], "ddd": 1123}}, 
-//     // [1, 2],[2]
-//     // {"a":1}, {"a": 2}
+    // [1, 2],[2]
+    // {"a":1}, {"a": 2}
 // )
 // print(diff)
 // util.dump(diff, "test dump")
