@@ -80,30 +80,24 @@ op.map = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>
     }, onFinish)
 )
 
+
+op.selectArr = f=>observerable=>{
+    let count = 0
+    return createOBf((onNext, onFinish)=>observerable((...args)=>{
+        if (f(...args)) {
+          count = count + 1
+          onNext(args[0], count)  
+        } 
+    },onFinish)
+    )
+}
+
 op.select = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
     if (f(...args)) onNext(...args)
 },onFinish)
 )
 
 op.filter=op.select
-
-op.sort = f=>observerable=>createOBf((onNext, onFinish)=>observerable((v)=>{
-    let newf = (a,b)=>f(a,b)?-1:1
-    
-    onNext(v.sort(newf))
-},onFinish)
-)
-
-op.shuffle = ()=>observerable=>createOBf((onNext, onFinish)=>observerable((arr)=>{
-    let _shuffled=[]
-    arr.forEach((v,i)=>{
-        let randPos = Math.floor(Math.random()*i)
-        _shuffled[i] = _shuffled[randPos]
-        _shuffled[randPos] = v
-    })
-    onNext(_shuffled)
-},onFinish)
-)
 
 op.reject = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
     if (!f(...args)) onNext(...args)
@@ -146,13 +140,52 @@ op.scan = (f,state)=>observerable=>createOBf((onNext, onFinish)=>{
         onNext(state, args[1])
     }, onFinish)
 })
+
 op.reverse = ()=>observerable=>createOBf((onNext, onFinish)=>{
-    return observerable((arr)=>{
-        onNext(arr.reverse())
+    let arr = []
+    return observerable((...args)=>{
+        arr.push(args[0])
     }, (...args)=>{
+        arr.reverse().forEach((v,i)=>{
+            onNext(v, i+1)
+        })
         onFinish(...args)
     })
 })
+
+op.sort = f=>observerable=>createOBf((onNext, onFinish)=>{
+    let arr = []
+    return observerable((...args)=>{
+        arr.push(args[0])
+    }, (...args)=>{
+        arr.sort(f).forEach((v,i)=>{
+            onNext(v, i+1)
+        })
+        onFinish(...args)
+    })
+})
+
+op.shuffle = f=>observerable=>createOBf((onNext, onFinish)=>{
+    let arr = []
+    return observerable((...args)=>{
+        arr.push(args[0])
+    }, (...args)=>{
+        let _shuffled=[]
+        arr.forEach((v,i)=>{
+            let randPos = Math.floor(Math.random()*i)
+            _shuffled[i] = _shuffled[randPos]
+            _shuffled[randPos] = v
+        })
+        _shuffled.forEach((v,i)=>{
+            onNext(v, i+1)
+        })
+        onFinish(...args)
+    })
+})
+
+op.slice = (from, to)=>op.pip(op.skip(from-1), op.take(to-from+1), op.selectArr(()=>true))
+
+
 op.findIndex = f=>observerable=>createOBf((onNext, onFinish)=>{
     let index = -1
     let newFinish = (...args)=>{
@@ -211,7 +244,7 @@ op.countBy = f=>observerable=>createOBf((onNext, onFinish)=>{
     }
     return observerable((...args)=>{
         let [v,i] = args
-        let _key = f(v,k)
+        let _key = f(v,i)
         if (_key) {
             _t[_key] = (_t[_key] || 0) + 1
         }
@@ -292,7 +325,7 @@ op.switch = ()=>observerable=>createOBf((onNext, onFinish)=>{
     let switchOB = (source)=>{
         if (innerSubscription !== undefined)
             innerSubscription()
-        innerSubscription = source(onNext)
+        innerSubscription = source(onNext, util.noop)
     } 
     let subscription = observerable(switchOB, onFinish)
     return ()=>{
@@ -331,7 +364,7 @@ op.skip = n=>observerable=>createOBf((onNext, onFinish)=>{
 op.get = (k, ...args)=>{
     let getOne = (kk, first)=>observerable=>createOBf((onNext,onFinish)=>observerable((t)=>{
         if (!util.isTable(t)) onNext(undefined)
-        else if (first) {
+        else  {
             let v = first ? t : undefined
             if (kk !== undefined) {
                 let realKK = util.type(kk) === "Number" ? kk-1 : kk
@@ -339,11 +372,10 @@ op.get = (k, ...args)=>{
             }
             onNext(v)
         }
+
     }, onFinish))
     let arr = [getOne(k, true)]
-    args.forEach((v,i)=>{
-        arr.push(getOne(v))
-    })
+    args.forEach(v=>arr.push(getOne(v)))
     arr.push(op.select((v)=>{
         return v !== undefined
     }))
@@ -597,15 +629,58 @@ let of = (...args)=>{
 //     // op.tap((...args)=>{console.log("tap here: ", ...args)})
 // )(of([1,2,322]))(util.noop)
 
-// op.sort((a,b)=>a>b)(of([3,4,1,5]))(console.log)
+// op.sort((a,b)=>a-b)(of(3,4,1,5))(console.log)
 
-// op.shuffle()(of([3,4,1,5,12,333,1123]))(console.log)
+// op.shuffle()(of(3,4,1,5,12,333,1123))(console.log)
 
-// op.reverse()(of([3,4,1,5,12,333,1123]))(console.log)
+// op.reverse()(of(3,4,1,5,12,333,1123))(console.log)
 
 // op.breakup()(of([3,4,1,5,12,333,1123]))(console.log)
 // op.breakup()(of({"a":1, "b":2, "c": 3}))(console.log)
 
 // op.findIndex(v=>v===3323)(of(3,4,1,5,12,333,1123))(console.log)
 // op.findValue(333)(of(3,4,1,5,12,333,1123))(console.log)
-op.all(v=>v>0)(of(-3,4,1,5,12,333,1123))(console.log)
+// op.all(v=>v>0)(of(-3,4,1,5,12,333,1123))(console.log)
+// op.skip(1)(of(-3,4,1,5,12,333,1123))(console.log)
+// op.take(3)(of(-3,4,1,5,12,333,1123))(console.log)
+// op.slice(3,4)(of(-3,4,1,5,12,333,1123))(console.log)
+
+// op.pip(
+//     op.slice(3,7), 
+//     op.value()
+// )
+// (of(1,2,3,444,4112,1))(console.log)
+
+// op.pip(
+//     op.groupBy(v=>{
+//         if (v>3) return "more3"
+//         else return "less3"
+//     }), 
+//     op.value()
+// )
+// (of(1,2,3,444,4112,1))(console.log)
+
+// op.pip(
+//     op.countBy(v=>{
+//         if (v>3) return "more3"
+//         else return "less3"
+//     }), 
+//     op.value()
+// )
+// (of(1,2,3,444,4112,1))(console.log)
+
+// op.max()(of(-3,4,1,5,12,333,1123))(console.log)
+// op.min()(of(-3,4,1,5,12,333,1123))(console.log)
+// op.sum()(of(-3,4,1,5,12,333,1123))(console.log)
+
+// op.get("a", "c")(of({"a":{"b": 1}}))(console.log)
+
+
+// op.sample(of(1))(of(-3,4,1,5,12,333,1123))(console.log)
+
+// op.flatten()(of(of(1), of(3,4), of(2)))(console.log)
+// op.flatMap(v=>of(v,v,v))(of(1,2,3))(console.log)
+// op.switch()(of(of(1), of(3,4), of(2)))(console.log)
+// 
+// op.first()(of(-3,4,1,5,12,333,1123))(console.log)
+op.buffer(3)(of(-3,4,1,5,12,333,1123))(console.log)

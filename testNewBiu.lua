@@ -11,13 +11,20 @@ local state3 =biu:createState({c=5,d=1})
 dump(util.diff({a=1}, {a=1,c=1}))
 
 -- test arr
--- local t = biu:fromArr({11,22,3, 1, 123123,123123}):reverse()
+local t = biu:fromArr({11,22,3, 1, 123123,123123})
+-- :reverse()
+-- :sort(function (a, b)
+-- 	return a<b
+-- end)
+:shuffle()
+:push(321)
+:slice(2,100)
 -- :scan(function (state, v, i)
 -- 	return state + v*i, i
 -- end, 0)
 -- :sum()
--- :value()
--- util.dump(t, "test t")
+:value()
+util.dump(t, "test t")
 
 
 -- test fromObj
@@ -279,4 +286,6 @@ dump(util.diff({a=1}, {a=1,c=1}))
 -- local state2 = state1:wait(biu:of(1,2,3))
 -- state2:subscribe(print)
 
-dump(biu:of({a=1,b=2,c=3}):breakup():print("trest"):value())
+-- dump(biu:of({a=1,b=2,c=3}):breakup():print("trest"):value())
+
+biu:of(1,2,3,4,5):buffer(2):subscribe(dump)

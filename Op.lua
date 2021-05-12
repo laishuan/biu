@@ -131,6 +131,22 @@ op.map = function (f)
 	end
 end
 
+op.selectArr = function (f)
+  return function (observerable)
+    local count = 0
+    return createOBf(function (onNext, onFinish)
+      return observerable(function (...)
+        if f(...) then
+          local args = {...}
+          count = count+1
+          onNext(args[1], count)
+        end
+      end, onFinish)
+    end)
+  end
+end
+
+
 op.select = function (f)
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
@@ -144,33 +160,6 @@ op.select = function (f)
 end
 
 op.filter = op.select
-
-op.sort = function (f)
-  return function (observerable)
-    return createOBf(function (onNext, onFinish)
-      return observerable(function (v)
-        table.sort(v, f)
-        onNext(v)
-      end, onFinish)
-    end)
-  end
-end
-
-op.shuffle = function ()
-  return function (observerable)
-    return createOBf(function (onNext, onFinish)
-      return observerable(function (t)
-        local _shuffled = {}
-        for index, value in ipairs(t) do
-          local randPos = math.floor(math.random()*index)+1
-          _shuffled[index] = _shuffled[randPos]
-          _shuffled[randPos] = value
-        end
-        onNext(_shuffled)
-      end, onFinish)
-    end)
-  end
-end
 
 op.reject = function (f)
 	return function (observerable)
@@ -233,20 +222,66 @@ op.scan = function (f, state)
 end
 
 op.reverse = function ( ... )
-	return function (observerable, ...)
-		return createOBf(function (onNext, onFinish)
-			return observerable(function (t)
-				local arr = {}
-				for i,v in ipairs(t) do
-					table.insert(arr, 1, v)
-				end
-				onNext(arr)
-			end, function ( ... )
-				onFinish(...)
-			end)
-		end)
-	end
+  return function (observerable, ...)
+    return createOBf(function (onNext, onFinish)
+      local arr = {}
+      return observerable(function (...)
+        table.insert(arr, 1, {...})
+      end, function ( ... )
+        for i=1, #arr do
+          local v = arr[i]
+          onNext(v[1], #arr - v[2] + 1)
+        end
+        onFinish()
+      end)
+    end)
+  end
 end 
+
+op.sort = function (f)
+  return function (observerable, ...)
+    return createOBf(function (onNext, onFinish)
+      local arr = {}
+      return observerable(function (v, ...)
+        arr[#arr+1] = v
+      end, function ( ... )
+      	table.sort(arr, f)
+        for i=1, #arr do
+          onNext(arr[i], i)
+        end
+        onFinish()
+      end)
+    end)
+  end
+end 
+
+op.shuffle = function (f)
+  return function (observerable, ...)
+    return createOBf(function (onNext, onFinish)
+      local arr = {}
+      return observerable(function (v, ...)
+        arr[#arr+1] = v
+      end, function ( ... )
+        local _shuffled = {}
+        for index, value in ipairs(arr) do
+          local randPos = math.floor(math.random()*index)+1
+          _shuffled[index] = _shuffled[randPos]
+          _shuffled[randPos] = value
+        end
+        for i=1, #_shuffled do
+          onNext(_shuffled[i], i)
+        end
+        onFinish()
+      end)
+    end)
+  end
+end 
+
+op.slice = function (from, to)
+	return op.pip(op.skip(from-1), op.take(to-from+1), op.selectArr(function ( ... )
+		return true
+	end))
+end
 
 op.findIndex = function (f)
 	return function (observerable)
@@ -559,7 +594,7 @@ op.buffer = function (size)
 		    local function newNext(...)
 			    local values = {...}
 			    for i = 1, #values do
-			        table.insert(buffer, values[i])
+			        table.insert(buffer, 1, values[i])
 			        if #buffer >= size then
 			            emit()
 			        end
