@@ -8,23 +8,23 @@ local state2 =biu:createState({b=4})
 local state3 =biu:createState({c=5,d=1})
 
 
-dump(util.diff({a=1}, {a=1,c=1}))
+-- dump(util.diff({a=1}, {a=1,c=1}))
 
 -- test arr
-local t = biu:fromArr({11,22,3, 1, 123123,123123})
+-- local t = biu:fromArr({11,22,3, 1, 123123,123123})
 -- :reverse()
 -- :sort(function (a, b)
 -- 	return a<b
 -- end)
-:shuffle()
-:push(321)
-:slice(2,100)
+-- :shuffle()
+-- :push(321)
+-- :slice(2,100)
 -- :scan(function (state, v, i)
 -- 	return state + v*i, i
 -- end, 0)
 -- :sum()
-:value()
-util.dump(t, "test t")
+-- :value()
+-- util.dump(t, "test t")
 
 
 -- test fromObj
@@ -112,14 +112,14 @@ util.dump(t, "test t")
 -- local state5 = state4:order(11)
 
 -- state5:subscribe(function ( ... )
--- 	print("test state5", ...)
+-- 	print("state5", ...)
 -- end)
 
 -- state4:order(101):subscribe(function ( ... )
--- 	print("test10")
+-- 	print("test101")
 -- end)
 -- state4:order(31):subscribe(function ( ... )
--- 	print("test20")
+-- 	print("test31")
 -- end)
 -- state4:set(22)
 
@@ -288,4 +288,13 @@ util.dump(t, "test t")
 
 -- dump(biu:of({a=1,b=2,c=3}):breakup():print("trest"):value())
 
-biu:of(1,2,3,4,5):buffer(2):subscribe(dump)
+-- biu:of(1,2,3,4,5):buffer(2):subscribe(dump)
+
+-- biu:of(1,2,3):wait(biu:of(11), biu:of(21), biu:of(31)):subscribe(print)
+
+-- local state = biu:createState({a=1})
+-- state:flatMap(function (v)
+-- 	return biu:fromRange(1,10)
+-- end):print():run()
+
+biu:of({1,2,3,4,5}):unpack():takeArgs(4):print("test"):run()

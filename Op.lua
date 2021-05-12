@@ -694,6 +694,21 @@ op.tp = function (tp)
 	end
 end
 
+op.takeArgs = function (n)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			return observerable(function ( ... )
+		        local args = {...}
+		        local newArgs = {}
+		        for i=1,n do
+		        	newArgs[i]=args[i]
+		        end
+		        return onNext(util.unpack(newArgs))
+			end, onFinish)
+		end)
+	end
+end
+
 op.changeFrom = function (v)
     local lastAndCur = op.window(2)
     return op.pip(lastAndCur, op.filter(function (v1, v2)
@@ -862,7 +877,7 @@ op.concat = function (other, ... )
 	local concatOne = function (other)
 		return function (observerable)
 			return createOBf(function (onNext, onFinish)
-				return observerable(util.noop, function (...)
+				return observerable(onNext, function (...)
 					local args = {...}
 					return other(onNext, onFinish)
 				end)
@@ -884,7 +899,7 @@ op.wait = function (other, ... )
   local concatOne = function (other)
     return function (observerable)
       return createOBf(function (onNext, onFinish)
-        return other(util.noop, function (...)
+        return other(onNext, function (...)
           local args = {...}
           return observerable(onNext, onFinish)
         end)

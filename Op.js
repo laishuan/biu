@@ -56,7 +56,7 @@ op.unpack = ()=>observerable=>createOBf((onNext, onFinish)=>observerable(args=>{
 },onFinish))
 
 op.breakup = ()=>observerable=>createOBf((onNext, onFinish)=>observerable(t=>{
-    util.loopKes(t).forEach(([v,k])=>{
+    util.loopKeys(t).forEach(([v,k])=>{
         if (util.type(k) === "Number")
             onNext(v,k+1)
         else
@@ -416,7 +416,7 @@ op.buffer = size=>observerable=>createOBf((onNext, onFinish)=>{
 op.join = (...sources)=>observerable=>createOBf((onNext, onFinish)=>{
     sources.unshift(observerable)
     let latest = []
-    let pending = sources.map((v)=>true)
+    let pending  = sources.map((v)=>true)
     let completed = []
     let subscription = []
 
@@ -461,14 +461,16 @@ op.change = comparator=>observerable=>createOBf((onNext, onFinish)=>{
     return observerable(newNext, onFinish)
 })
 
-op.tp = tp=>observerable=>createOBf((onNext, onFinish)=>{
-    return observerable((...args)=>{
+op.tp = tp=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
         if (args[0] === tp) {
             args.shift()
             return onNext(...args)
         }
-    }, onFinish)
-})
+    }, onFinish))
+
+op.takeArgs = n=>observerable=>createOBf((onNext,onFinish)=>observerable((v, ...args)=>{
+    onNext(...args.slice(0,n))
+}, onFinish))
 
 op.changeFrom = v=>{
     let lastAndCur = op.window(2)
@@ -494,7 +496,7 @@ op.flatMapLatest = callback=>observerable=>createOBf((onNext, onFinish)=>{
     let subscribeInner = (...args)=>{
         if (innerSubscription)
             innerSubscriptionI()
-        innerSubscription = callback(...args)(onNext)
+        innerSubscription = callback(...args)(onNext, util.noop)
     }
 
     let subscription = observerable(subscribeInner, onFinish)
@@ -577,7 +579,7 @@ op.push = v=>observerable=>createOBf((onNext, onFinish)=>{
 })
 
 op.concat = (other, ...others)=>{
-    let concatOne = o=>observerable=>createOBf((onNext, onFinish)=>observerable(util.noop, (...args)=>{
+    let concatOne = o=>observerable=>createOBf((onNext, onFinish)=>observerable(onNext, (...args)=>{
             return o(onNext, onFinish)
         })
     )
@@ -589,20 +591,20 @@ op.concat = (other, ...others)=>{
 }
 
 op.wait = (other, ...others)=>{
-    let concatOne = o=>observerable=>createOBf((onNext, onFinish)=>other(util.noop, (...args)=>{
+    let waitOne = o=>observerable=>createOBf((onNext, onFinish)=>o(onNext, (...args)=>{
             return observerable(onNext, onFinish)
         })
     )
-    let arr = [concatOne(other)]
+    let arr = [waitOne(other)]
     others.forEach((v,i)=>{
-        arr.push(concatOne(v))
+        arr.push(waitOne(v))
     })
     return op.pip(...arr)
 }
 
 let of = (...args)=>{
     return (onNext, onFinish)=>{
-        util.loopKes(args).forEach(([v,i])=>{
+        util.loopKeys(args).forEach(([v,i])=>{
             onNext(v, i+1)
         })
         onFinish()
@@ -683,4 +685,45 @@ let of = (...args)=>{
 // op.switch()(of(of(1), of(3,4), of(2)))(console.log)
 // 
 // op.first()(of(-3,4,1,5,12,333,1123))(console.log)
-op.buffer(3)(of(-3,4,1,5,12,333,1123))(console.log)
+// op.buffer(3)(of(-3,4,1,5,12,333,1123))(console.log)
+
+// op.join(of(1))(of(-3,4,1,5,12,333,1123))(console.log)
+
+// op.change()(of(-3,1,1,5,12,333,1123))(console.log)
+// op.tp("sss")(of("aaa", "sss"))(console.log)
+
+// op.pip(
+//     op.takeArgs(1),
+//     op.buffer(3), 
+//     // op.value()
+// )
+// (of(1,2,3,444,4112,1,1))(console.log)
+
+// op.changeFrom(12)(of(-3,5,1,5,12,333,1123))(console.log)
+// op.changeTo(12)(of(-3,5,1,5,12,333,1123))(console.log)
+// op.flatMapLatest(v=>of(v,v,v))(of(1,2,3))(console.log)
+
+// op.merge(of(11), of(22), of(33))(of(1,2,3))(console.log)
+
+// op.window(3)(of(-3,5,1,5,12,333,1123))(console.log)
+// op.with(of(11), of(22), of(33))(of(1,2,3))(console.log)
+// op.startWith(12, 1)(of(-3,5,1,5,12,333,1123))(console.log)
+
+// op.pip(
+//     op.startWith(12),
+//     op.selectArr(util.constant(true)), 
+//     // op.value()
+// )
+// (of(1,2,3,444,4112,1,1))(console.log)
+
+
+// op.pip(
+//     op.push(12),
+//     op.selectArr(util.constant(true)), 
+//     // op.value()
+// )
+// (of(1,2,3,444,4112,1,1))(console.log)
+
+// op.concat(of(11,12), of(22), of(33))(of(1,2,3))(console.log)
+// op.wait(of(11), of(22), of(33))(of(1,2,3))(console.log)
+

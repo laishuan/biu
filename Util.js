@@ -11,7 +11,7 @@ let isTable = (t) => {
     return tp === "Array" || tp === "Object"
 }
 
-let loopKes = (t)=>{
+let loopKeys = (t)=>{
     console.assert(isTable(t), "t must be object or array")
     let keys = util.keys(t)
     return keys.map((k)=>{
@@ -32,7 +32,7 @@ let del = (t, k)=>{
 }
 util.isTable = isTable
 util.type = type
-util.loopKes = loopKes
+util.loopKeys = loopKeys
 util.del = del
 util.eq = (x,y)=>{return x===y}
 util.noop = ()=>{}
@@ -78,7 +78,7 @@ util.diff = (t1, t2)=>{
         ret = ret || (type(k) === "Number" ? [] : {})
         return ret
     }
-    loopKes(t1).forEach(([v,k])=>{
+    loopKeys(t1).forEach(([v,k])=>{
         // print (v, k)
         let v2 = t2[k]
         if (type(v) !== type(v2)) {
@@ -100,7 +100,7 @@ util.diff = (t1, t2)=>{
         }
     })
 
-    loopKes(t2).forEach(([v, k])=>{
+    loopKeys(t2).forEach(([v, k])=>{
         if (t1[k] === undefined) {
             getRet(k)[k] = v
         }
@@ -118,7 +118,7 @@ util.dump = (t, prefix, deep) => {
 }
 // console.log(util.toStr({"a":{"b":[1,2,3], "ddd": 123}}))
 // console.log(util.keys([123123,1,1,1,1]))
-// util.dump(loopKes({"a":1, "b":2}), "test loopKeys")
+// util.dump(loopKeys({"a":1, "b":2}), "test loopKeys")
 // let diff = util.diff(
 //     {"a":{"b":[1,11,3], "ddd": 123, "e": 1}}, 
 //     {"a":{"b":[1,2,3], "ddd": 1123}}, 

@@ -88,7 +88,7 @@ combinData = function (to, from)
     end
   end
 
-   if type(from) ~= "table" or isObservable(from) or isNode(to) then
+   if type(from) ~= "table" or isObservable(from) or isNode(from) then
    	  for k,v in pairs(newTo) do
    	  	if v == "_delete" then
    	  		newTo[k] = nil
@@ -132,6 +132,10 @@ for k,v in pairs(op) do
 		for i,v in ipairs(args) do
 			if isObservable(v) then
 				args[i] = v._subscribe
+			elseif k == "flatMap" then
+				args[i] = function ( ... )
+					return v(...)._subscribe
+				end
 			end
 		end
 		local f = v(util.unpack(args))
