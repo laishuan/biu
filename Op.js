@@ -290,8 +290,8 @@ op.sample = sampler=>observerable=>createOBf((onNext, onFinish)=>{
     }, onFinish)
 
     return () => {
-        if (stap1) stop1()
-        if (stap2) stop2()
+        if (stop1) stop1()
+        if (stop2) stop2()
     }
 })
 
@@ -495,7 +495,7 @@ op.flatMapLatest = callback=>observerable=>createOBf((onNext, onFinish)=>{
 
     let subscribeInner = (...args)=>{
         if (innerSubscription)
-            innerSubscriptionI()
+            innerSubscription()
         innerSubscription = callback(...args)(onNext, util.noop)
     }
 

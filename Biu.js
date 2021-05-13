@@ -138,7 +138,7 @@ class State extends Observable {
             allKey.forEach((order, i) => {
                 let orderArr = this.observers[order]
                 orderArr.reverse().forEach(v=>{
-                    v[2](nextData, ...args)
+                    v[1](...args)
                 })
             });
 
