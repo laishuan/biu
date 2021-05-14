@@ -151,9 +151,7 @@ class State extends Observable {
     }
 
     order(order) {
-        return new Observable((onNext, onFinish)=>{
-            return this.subscribe(onNext, onFinish, order)
-        })
+        return Biu.createState(this, order)
     }
 
     subscribe(onNext, onFinish, order) {
@@ -380,10 +378,10 @@ class Biu {
         return new Observable(f)
     }
 
-    static createState(data) {
+    static createState(data, order) {
         let state =  new State(data)
         if (isObservable(data)) {
-            data.subscribe(state)
+            data.subscribe(state, undefined, order)
         }
         else {
             state.set(data)

@@ -108,20 +108,20 @@ local state3 =biu:createState({c=5,d=1})
 -- state1:set({arr={[2]="_delete"}, a="_delete"})
 
 
--- local state4 = biu:createState(1)
--- local state5 = state4:order(11)
+local state4 = biu:createState(1)
+local state5 = state4:order(11)
 
--- state5:subscribe(function ( ... )
--- 	print("state5", ...)
--- end)
+state5:subscribe(function ( ... )
+	print("state5", ...)
+end)
 
--- state4:order(101):subscribe(function ( ... )
--- 	print("test101")
--- end)
--- state4:order(31):subscribe(function ( ... )
--- 	print("test31")
--- end)
--- state4:set(22)
+state4:order(101):subscribe(function ( ... )
+	print("test101", ...)
+end)
+state4:order(312):subscribe(function ( ... )
+	print("test312", ...)
+end)
+state4:set(22)
 
 
 --test tp
@@ -297,4 +297,4 @@ local state3 =biu:createState({c=5,d=1})
 -- 	return biu:fromRange(1,10)
 -- end):print():run()
 
-biu:of({1,2,3,4,5}):unpack():takeArgs(4):print("test"):run()
+-- biu:of({1,2,3,4,5}):unpack():takeArgs(4):print("test"):run()

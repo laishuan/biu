@@ -301,11 +301,7 @@ end
 State.onCompleted = State.finish
 
 function State:order(order)
-  return setmetatable({
-      _subscribe = function (onNext, onFinish)
-      return self:subscribe(onNext, onFinish, order)
-    end,
-  }, Observable)
+  return Biu:createState(self, order)
 end
 
 function State:subscribe(onNext, onFinish, order)
@@ -368,7 +364,7 @@ function Biu:createOB(f)
   return setmetatable(self, Observable)
 end
 
-function Biu:createState(data)
+function Biu:createState(data, order)
   local self
   self = {
     observers = {},
@@ -379,7 +375,7 @@ function Biu:createState(data)
   }
   setmetatable(self, State)
   if isObservable(data) then
-    data:subscribe(self)
+    data:subscribe(self, nil, order)
   else
     self:set(data)
   end
