@@ -664,3 +664,5 @@ let state5 = state4.order(11)
 // console.log(Biu.of({"a":1, "b":2, "c":3}).breakup().print("trest").value())
 
 // Biu.of(1,2,3,4,5).buffer(2).subscribe(console.log)
+
+console.log(Biu.of(1,2,3,4,5).splice(1,2,4).value()) 

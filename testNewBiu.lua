@@ -298,3 +298,5 @@ state4:set(22)
 -- end):print():run()
 
 -- biu:of({1,2,3,4,5}):unpack():takeArgs(4):print("test"):run()
+
+dump(biu:of(1,2,3,4,5):splice(1,0,4):print("test vvv"):value()) 

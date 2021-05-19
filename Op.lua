@@ -131,16 +131,14 @@ op.map = function (f)
 	end
 end
 
-op.selectArr = function (f)
+op.array = function ()
   return function (observerable)
     local count = 0
     return createOBf(function (onNext, onFinish)
       return observerable(function (...)
-        if f(...) then
-          local args = {...}
-          count = count+1
-          onNext(args[1], count)
-        end
+        local args = {...}
+        count = count+1
+        onNext(args[1], count)
       end, onFinish)
     end)
   end
@@ -282,6 +280,20 @@ op.slice = function (from, to)
 		return true
 	end))
 end
+
+op.splice = function (start, count, ...)
+	local args = {...}
+	return function (observerable)
+		local last = op.skip(start+count-1)(observerable)
+		local arr = {op.take(start-1)}
+		for i,v in ipairs(args) do
+			arr[#arr+1] = op.push(v)
+		end
+		arr[#arr+1] = op.concat(last)
+		arr[#arr+1] = op.array()
+		return op.pip(util.unpack(arr))(observerable)
+	end
+end 
 
 op.findIndex = function (f)
 	return function (observerable)

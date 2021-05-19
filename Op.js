@@ -80,14 +80,11 @@ op.map = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>
     }, onFinish)
 )
 
-
-op.selectArr = f=>observerable=>{
+op.array = f=>observerable=>{
     let count = 0
     return createOBf((onNext, onFinish)=>observerable((...args)=>{
-        if (f(...args)) {
           count = count + 1
           onNext(args[0], count)  
-        } 
     },onFinish)
     )
 }
@@ -96,6 +93,7 @@ op.select = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args
     if (f(...args)) onNext(...args)
 },onFinish)
 )
+
 
 op.filter=op.select
 
@@ -185,6 +183,14 @@ op.shuffle = f=>observerable=>createOBf((onNext, onFinish)=>{
 
 op.slice = (from, to)=>op.pip(op.skip(from-1), op.take(to-from+1), op.selectArr(()=>true))
 
+op.splice = (start, count, ...args)=>observerable=>{
+    let last = op.skip(start+count-1)(observerable)
+    let arr = [op.take(start-1)]
+    args.forEach(v=>arr.push(op.push(v)))
+    arr.push(op.concat(last))
+    arr.push(op.array())
+    return op.pip(...arr)(observerable)
+}
 
 op.findIndex = f=>observerable=>createOBf((onNext, onFinish)=>{
     let index = -1
@@ -335,7 +341,7 @@ op.switch = ()=>observerable=>createOBf((onNext, onFinish)=>{
 })
 
 op.take = n=>observerable=>createOBf((onNext, onFinish)=>{
-    n = n || 1
+    n = n === undefined ? 1 : n
     if (n<=0) {
         onFinish()
         return
@@ -351,7 +357,7 @@ op.take = n=>observerable=>createOBf((onNext, onFinish)=>{
 })
 
 op.skip = n=>observerable=>createOBf((onNext, onFinish)=>{
-    n = n || 1
+    n = n === undefined ? 1 : n
     let i = 1
     return observerable((...args)=>{
         if (i>n) 
