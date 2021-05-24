@@ -46,6 +46,7 @@ op.print = prefix=>observerable=>createOBf((onNext, onFinish)=>observerable((...
     })
 )
 op.tap = f=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
+        f = f || util.noop
         f(...args)
         onNext(...args)
     },onFinish)
@@ -420,9 +421,10 @@ op.buffer = size=>observerable=>createOBf((onNext, onFinish)=>{
 })
 
 op.join = (...sources)=>observerable=>createOBf((onNext, onFinish)=>{
-    sources.unshift(observerable)
+    let newSource = [observerable]
+    newSource = newSource.concat(sources)
     let latest = []
-    let pending  = sources.map((v)=>true)
+    let pending  = newSource.map((v)=>true)
     let completed = []
     let subscription = []
 
@@ -436,12 +438,12 @@ op.join = (...sources)=>observerable=>createOBf((onNext, onFinish)=>{
     
     let newFinish = (i)=>(...args)=>{
         completed.push(i)
-        if (completed.length === sources.length)
+        if (completed.length === newSource.length)
             onFinish(...args)
     }
 
-    sources.forEach((v,i)=>{
-        subscription.push(sources[i](newNext(i), newFinish(i)))
+    newSource.forEach((v,i)=>{
+        subscription.push(newSource[i](newNext(i), newFinish(i)))
     })
 
     return ()=>{
@@ -469,8 +471,8 @@ op.change = comparator=>observerable=>createOBf((onNext, onFinish)=>{
 
 op.tp = tp=>observerable=>createOBf((onNext, onFinish)=>observerable((...args)=>{
         if (args[0] === tp) {
-            args.shift()
-            return onNext(...args)
+            let others = args.slice(1)
+            return onNext(...others)
         }
     }, onFinish))
 
@@ -514,18 +516,19 @@ op.flatMapLatest = callback=>observerable=>createOBf((onNext, onFinish)=>{
 })
 
 op.merge = (...sources)=>observerable=>createOBf((onNext, onFinish)=>{
-    sources.unshift(observerable)
+    let newSource = [observerable]
+    newSource = newSource.concat(sources)
     let completed = []
     let subscription = []
     
     let newFinish = (i)=>(...args)=>{
         completed.push(i)
-        if (completed.length === sources.length)
+        if (completed.length === newSource.length)
             onFinish(...args)
     }
 
-    sources.forEach((v,i)=>{
-        subscription.push(sources[i](onNext, newFinish(i)))
+    newSource.forEach((v,i)=>{
+        subscription.push(newSource[i](onNext, newFinish(i)))
     })
 
     return ()=>{
