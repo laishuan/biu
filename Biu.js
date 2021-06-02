@@ -40,7 +40,7 @@ class State extends Observable {
                 return vofk(keyArr, this._value)
             }
         }).filter(v=>{
-            return v !== undefined
+            return v !== undefined && v !== null
         })
     }
 
@@ -52,7 +52,7 @@ class State extends Observable {
         let keyArr = args
         keyArr.forEach((v,i) => {
             if (!util.isTable(v)) {
-                if (util.type(v) === "String") {
+                if (util.type(v) !== "String") {
                     keyArr[i] = [v]
                 }
                 else {
@@ -109,7 +109,7 @@ class State extends Observable {
 
         this._value = combinData(data, this._value)
 
-        if (nextData !== undefined) {
+        if (nextData !== undefined && nextData !== null) {
             if (!this.stopped) {
                 let allKey = util.keys(this.observers)
                 allKey.sort((order1, order2)=>{
@@ -119,7 +119,8 @@ class State extends Observable {
 
                 allKey.forEach((order, i) => {
                     let orderArr = this.observers[order]
-                    orderArr.reverse().forEach(v=>{
+                    let newArr = [...orderArr]
+                    newArr.reverse().forEach(v=>{
                         v[0](nextData, ...args)
                     })
                 });
@@ -278,10 +279,18 @@ let combinData = (to, from)=>{
     }
     else
         newTo = util.type(to) === "Object" ? {} : []
+
+    if (fromArrToObj) {
+        let keys = Object.keys(to)
+        keys.forEach(k=>{
+                to[parseInt(k) - 1] = to[k]
+                to[k] = undefined
+        })
+    }
     util.loopKeys(to).forEach(([v,k])=>{
         if (!isObservable(v)) {
             if (fromArrToObj) {
-                newTo[parseInt(k)-1] = v
+                newTo[parseInt(k)] = v
             }
             else 
                 newTo[k] = v
@@ -557,7 +566,7 @@ let state5 = state4.order(11)
 
 // state.set({"c":{"d":{"f":3}}})
 
-// state.any("a", "b").subscribe(console.log)
+// state.any("a", "c.d").subscribe(console.log)
 
 // state.set({"a":11})
 
@@ -665,4 +674,4 @@ let state5 = state4.order(11)
 
 // Biu.of(1,2,3,4,5).buffer(2).subscribe(console.log)
 
-console.log(Biu.of(1,2,3,4,5).splice(1,2,4).value()) 
+// console.log(Biu.of(1,2,3,4,5).splice(1,2,4).value()) 

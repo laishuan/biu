@@ -125,7 +125,9 @@ op.map = function (f)
 	return function (observerable)
 		return createOBf(function (onNext, onFinish)
 			return observerable(function (...)
-				onNext(f(...))
+				local args =  {...}
+				args[1] = f(...)
+				onNext(util.unpack(args))
 			end, onFinish)
 		end)
 	end

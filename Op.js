@@ -182,7 +182,7 @@ op.shuffle = f=>observerable=>createOBf((onNext, onFinish)=>{
     })
 })
 
-op.slice = (from, to)=>op.pip(op.skip(from-1), op.take(to-from+1), op.selectArr(()=>true))
+op.slice = (from, to)=>op.pip(op.skip(from-1), op.take(to-from+1), op.array())
 
 op.splice = (start, count, ...args)=>observerable=>{
     let last = op.skip(start+count-1)(observerable)
