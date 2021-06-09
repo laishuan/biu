@@ -122,6 +122,12 @@ combinData = function (to, from)
 	    end
 	end
   end
+
+  for k,v in pairs(newTo) do
+  	if v == "_delete" then
+    	newTo[k] = nil
+    end
+  end
   return newTo
 end
 
@@ -232,8 +238,8 @@ function State:any( ... )
 		for i,keys in ipairs(keyArr) do
 			ret[i] = vofk(keys, self._value)
 		end
-		return unpack(ret)
-	end)
+		return ret
+	end):unpack()
 end
 
 function State:set(data, ...)

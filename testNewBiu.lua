@@ -7,6 +7,32 @@ local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
 local state2 =biu:createState({b=4})
 local state3 =biu:createState({c=5,d=1})
 
+--- test state set
+local state = biu:createState()
+state:set({a=1,b={c=2,d={3,4,5}}})
+state:set({a="_delete"})
+dump(state)
+state:set({a="_delete"})
+dump(state)
+state:set({b="_delete"})
+dump(state)
+
+
+-- test any
+-- local state = biu:createState({aaa=state1:get("a"), bbb = state2:get("b")})
+-- state:any("aaa", "bbb"):map(function (v1, v2)
+-- 	print("enter any", v1, v2)
+-- 	return v1
+-- end):run()
+
+
+-- test concat flatten
+-- local a = biu:of(
+-- 	biu:fromArr({1,2,3})._subscribe,
+-- 	biu:fromArr({4,5,6})._subscribe,
+-- 	biu:fromArr({7,8,9})._subscribe
+-- ):flatten():print("aaa"):array():value()
+-- dump(a)
 
 -- dump(util.diff({a=1}, {a=1,c=1}))
 
@@ -108,20 +134,20 @@ local state3 =biu:createState({c=5,d=1})
 -- state1:set({arr={[2]="_delete"}, a="_delete"})
 
 
-local state4 = biu:createState(1)
-local state5 = state4:order(11)
+-- local state4 = biu:createState(1)
+-- local state5 = state4:order(11)
 
-state5:subscribe(function ( ... )
-	print("state5", ...)
-end)
+-- state5:subscribe(function ( ... )
+-- 	print("state5", ...)
+-- end)
 
-state4:order(101):subscribe(function ( ... )
-	print("test101", ...)
-end)
-state4:order(312):subscribe(function ( ... )
-	print("test312", ...)
-end)
-state4:set(22)
+-- state4:order(101):subscribe(function ( ... )
+-- 	print("test101", ...)
+-- end)
+-- state4:order(312):subscribe(function ( ... )
+-- 	print("test312", ...)
+-- end)
+-- state4:set(22)
 
 
 --test tp
@@ -299,4 +325,4 @@ state4:set(22)
 
 -- biu:of({1,2,3,4,5}):unpack():takeArgs(4):print("test"):run()
 
-dump(biu:of(1,2,3,4,5):splice(1,0,4):print("test vvv"):value()) 
+-- dump(biu:of(1,2,3,4,5):splice(1,0,4):print("test vvv"):value()) 

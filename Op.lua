@@ -469,10 +469,10 @@ op.flatten = function ()
 		      end
 		    end
 			observerable(function (v)
+				remaining = remaining + 1
 				subscriptions[#subscriptions+1] = v(function ( ... )
-					remaining = remaining + 1
 					onNext(...)
-				end, util.noop)
+				end, newFinish)
 			end, newFinish)
 
 			return function ( ... )

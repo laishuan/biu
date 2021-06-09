@@ -336,6 +336,11 @@ let combinData = (to, from)=>{
             }
         }
     });
+    util.loopKeys(newTo).forEach(([v,k])=>{
+        if (v === "_delete") {
+            util.del(newTo, k)
+        }
+    })
     return newTo
 }
 

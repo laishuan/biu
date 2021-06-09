@@ -312,10 +312,10 @@ op.flatten = f=>observerable=>createOBf((onNext, onFinish)=>{
         }
     }
     observerable((v)=>{
+        remaining = remaining + 1
         subscriptions.push(v((...args)=>{
-            remaining = remaining + 1
             onNext(...args)
-        }, util.noop))
+        }, newFinish))
     }, newFinish)
 
     return ()=>{
