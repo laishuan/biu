@@ -150,11 +150,24 @@ for k,v in pairs(op) do
 			f(self._subscribe)(function (v)
 				ret = v
 			end)
-			if ret.firstNoK and #ret.data == 1 then
-				return ret.data[1]
+			if ret.firstNoK and ret.count == 1 then
+				return ret.arr[1]
+			elseif #ret.arr == ret.count then
+				return ret.arr
 			else
-				return ret.data
+				return ret.obj
 			end
+		elseif k == "flatten" then
+			f = op.pip(op.map(function (...)
+				local args = {...}
+				for i,v in ipairs(args) do
+					if isObservable(v) then
+						args[i] = v._subscribe
+					end
+				end
+				return args
+			end), op.unpack(), op.flatten())
+			return Biu:createOB(f(self._subscribe))
 		else
 			return Biu:createOB(f(self._subscribe))
 		end

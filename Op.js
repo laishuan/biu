@@ -266,20 +266,27 @@ op.sum = ()=>op.reduce((x,y)=>x+y, 0)
 
 op.value = ()=>{
     let first = true
-    let value = {"firstNoK": false}
+    let value = {
+        "firstNoK": false, 
+        count: 0,
+        arr: [],
+        obj: {}
+    }
     return op.reduce((state, v, k)=>{
+        value.count = value.count + 1
         if (first) {
             value.firstNoK = (k==undefined)
             first = false
+            value.arr.push(v)
         }
-        let data = value.data
-        if (data === undefined) {
-            if (k === undefined || util.type(k) === "Number") data = []
-            else data = {}
+        else {
+            if (k === undefined || util.type(k) === "Number")
+                 value.arr.push(v)
+             if (k !== undefined) {
+                 value.obj[k] = v
+             } 
         }
-        value.data = data
-        if (util.type(data) === "Object") data[k] = v
-        else if (util.type(data) === "Array") data.push(v)
+
         return value
     }, value)
 }

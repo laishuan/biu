@@ -417,17 +417,25 @@ end
 
 op.value = function ()
 	local first = true
-	local value = {firstNoK = false, data = {}}
+	local value = {
+		firstNoK = false, 
+		arr = {},
+		obj = {},
+		count = 0
+	}
 	return op.reduce(function (state, v, k)
+		value.count = value.count + 1
 		if first then
 			value.firstNoK = (k == nil)
 			first = false
-		end
-		local data = value.data
-		if k ~= nil then
-			data[k] = v
+			value.arr[#value.arr+1] = v
 		else
-			data[#data+1] = v
+			if not k or type(k) == "number" then
+				value.arr[#value.arr+1] = v
+			end
+			if k then
+				value.obj[k] = v
+			end
 		end
 		return value
 	end, value)

@@ -359,11 +359,24 @@ util.loopKeys(op).forEach(([v,k])=>{
         if (k === "value") {
             let ret
             f(this._subscribe)(v=>{ret=v})
-            if (ret.firstNoK && ret.data.length === 1) {
-                return ret.data[0]
+            if (ret.firstNoK && ret.count === 1) {
+                return ret.arr[0]
             }
+            else if (ret.arr.length === ret.count)
+                return ret.arr
             else
-                return ret.data
+                return ret.obj
+        }
+        else if (k === "flatten") {
+            f = op.pip(op.map((...args)=>{
+                args.forEach((elm, i)=>{
+                    if (isObservable(elm)) {
+                        args[i] = elm._subscribe
+                    }
+                })
+                return args
+            }), op.unpack(), op.flatten())
+            return Biu.createOB(f(this._subscribe))
         }
         else {
             return Biu.createOB(f(this._subscribe))

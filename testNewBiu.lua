@@ -7,15 +7,18 @@ local state1 =biu:createState({a=3, arr={1,2,3,4,5,6,7,8,9}})
 local state2 =biu:createState({b=4})
 local state3 =biu:createState({c=5,d=1})
 
---- test state set
-local state = biu:createState()
-state:set({a=1,b={c=2,d={3,4,5}}})
-state:set({a="_delete"})
-dump(state)
-state:set({a="_delete"})
-dump(state)
-state:set({b="_delete"})
-dump(state)
+-- - test state set
+-- local state = biu:createState({})
+-- state.set({[2]="_delete"})
+-- state:set({a=1,b={c=2,d={3,4,5}}})
+-- state:set({a="_delete"})
+-- dump(state)
+-- state.set({[2]="_delete"})
+-- dump(state)
+-- state:set({a="_delete"})
+-- dump(state)
+-- state:set({b="_delete"})
+-- dump(state)
 
 
 -- test any
@@ -26,13 +29,13 @@ dump(state)
 -- end):run()
 
 
--- test concat flatten
--- local a = biu:of(
--- 	biu:fromArr({1,2,3})._subscribe,
--- 	biu:fromArr({4,5,6})._subscribe,
--- 	biu:fromArr({7,8,9})._subscribe
--- ):flatten():print("aaa"):array():value()
--- dump(a)
+test concat flatten
+local a = biu:of(
+	biu:fromArr({1,2,3}),
+	biu:fromArr({4,5,6}),
+	biu:fromArr({7,8,9})
+):flatten():print("aaa"):value()
+dump(a)
 
 -- dump(util.diff({a=1}, {a=1,c=1}))
 
