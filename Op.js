@@ -277,15 +277,12 @@ op.value = ()=>{
         if (first) {
             value.firstNoK = (k==undefined)
             first = false
-            value.arr.push(v)
         }
-        else {
-            if (k === undefined || util.type(k) === "Number")
-                 value.arr.push(v)
-             if (k !== undefined) {
-                 value.obj[k] = v
-             } 
-        }
+        if (k === undefined || util.type(k) === "Number")
+             value.arr.push(v)
+        if (k !== undefined) {
+            value.obj[k] = v
+        } 
 
         return value
     }, value)

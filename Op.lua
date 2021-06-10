@@ -428,14 +428,12 @@ op.value = function ()
 		if first then
 			value.firstNoK = (k == nil)
 			first = false
+		end
+		if not k or type(k) == "number" then
 			value.arr[#value.arr+1] = v
-		else
-			if not k or type(k) == "number" then
-				value.arr[#value.arr+1] = v
-			end
-			if k then
-				value.obj[k] = v
-			end
+		end
+		if k then
+			value.obj[k] = v
 		end
 		return value
 	end, value)
