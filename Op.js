@@ -466,8 +466,8 @@ op.change = comparator=>observerable=>createOBf((onNext, onFinish)=>{
         let isEqual = comparator(value, currentValue)
         currentValue = value
         if (first || !isEqual) {
-            onNext(value, ...args)
             first = false
+            onNext(value, ...args)
         }
     }
     return observerable(newNext, onFinish)

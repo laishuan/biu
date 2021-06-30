@@ -690,8 +690,8 @@ op.change = function (comparator)
 				local isEqual = comparator(value, currentValue)
 				currentValue = value
 		        if first or not isEqual then
-		            onNext(value, util.unpack(values))
 		            first = false
+		            onNext(value, util.unpack(values))
 		        end
 			end
 
