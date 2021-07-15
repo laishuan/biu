@@ -542,6 +542,34 @@ op.take = function (n)
 	end
 end
 
+op.takeUntil = function (other)
+  return function (observerable)
+    return createOBf(function (onNext, onFinish)
+        other(onFinish,onFinish)
+        return observerable(onNext, onFinish)
+    end)
+  end
+end
+
+op.takeWhile = function (f)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			local taking = true
+			local newNext = function ( ... )
+				if taking then
+					taking = f(...)
+					if taking then
+						return onNext(...)
+					else
+						return onFinish()
+					end
+				end
+			end
+			return observerable(newNext, onFinish)
+		end)
+	end
+end
+
 op.skip = function (n)
 	return function (observerable)
   		n = n or 1
@@ -554,6 +582,47 @@ op.skip = function (n)
 			        i = i + 1
 			    end
 			end, onFinish)
+		end)
+	end
+end
+
+op.skipUntil = function (other)
+  return function (observerable)
+    return createOBf(function (onNext, onFinish)
+        local triggered = false
+        local function trigger()
+          triggered = true
+        end
+        other(trigger, trigger)
+
+        local function onCompleted()
+          if triggered then
+            onFinish()
+          end
+        end
+
+        return observerable(function ( ... )
+            if trigger then
+              onNext( ... )
+            end
+        end, onCompleted)
+    end)
+  end
+end
+
+op.skipWhile = function (f)
+	return function (observerable)
+		return createOBf(function (onNext, onFinish)
+			local skipping = true
+			local newNext = function ( ... )
+				if skipping then
+					skipping = f(...)
+				end
+				if not skipping then
+					return onNext(...)
+				end
+			end
+			return observerable(newNext, onFinish)
 		end)
 	end
 end

@@ -361,6 +361,27 @@ op.take = n=>observerable=>createOBf((onNext, onFinish)=>{
     },onFinish)
 })
 
+op.takeUntil = other=>observerable=>createOBf((onNext, onFinish)=>{
+    other(onFinish, onFinish)
+    return observerable(onNext, onFinish)
+})
+
+op.takeWhile = f=>observerable=>createOBf((onNext, onFinish)=>{
+    let taking = true
+    let newNext = (...args)=>{
+        if (taking) {
+            taking = f(...args)
+            if (taking) {
+                return onNext(...args)
+            }
+            else
+                return onFinish()
+        }
+    }
+
+    return observerable(newNext, onFinish)
+})
+
 op.skip = n=>observerable=>createOBf((onNext, onFinish)=>{
     n = n === undefined ? 1 : n
     let i = 1
@@ -370,6 +391,39 @@ op.skip = n=>observerable=>createOBf((onNext, onFinish)=>{
         else
             i = i + 1
     },onFinish)
+})
+
+op.skipUntil = other=>observerable=>createOBf((onNext, onFinish)=>{
+    let triggered = false
+    let trigger = ()=>{
+        triggered = true
+    }
+    other(trigger, trigger)
+    let newNext = (...args)=>{
+        if (triggered) {
+            onNext(...args)
+        }
+    }
+    let newFinish = (...args)=>{
+        if (triggered) {
+            onFinish(...args)
+        }
+    }
+    return observerable(newNext, newFinish)
+})
+
+op.skipWhile = f=>observerable=>createOBf((onNext, onFinish)=>{
+    let skipping = true
+    let newNext = (...args)=>{
+        if (skipping) {
+            skipping = f(...args)
+        }
+        if (!skipping) {
+            return onNext(...args)
+        }
+    }
+
+    return observerable(newNext, onFinish)
 })
 
 op.get = (k, ...args)=>{
